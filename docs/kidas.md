@@ -113,9 +113,9 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 ### E0 – Project Setup & AI Workflow
 - **E0-S1 (M) Laravel scaffold** – Laravel + Sail + PostgreSQL running locally; `.env.example` complete.
 - **E0-S2 (M) Quality pipeline** – Pest, Pint and Larastan set up; GitHub Actions runs all three on every PR (with a Postgres service).
-- **E0-S3 (M) AI guardrails** – `CLAUDE.md`, `docs/stories/`, `docs/ai-findings.md` and `docs/adr/` created.
-- **E0-S4 (M) React scaffold** – React + Tailwind via Vite in `resources/js`, React Router, role-based navigation layout, API client with Sanctum CSRF handling.
-- **E0-S5 (M) Filament scaffold** – Panel at `/admin`, accessible to the admin role only.
+- **E0-S3 (M) React scaffold** – React + Tailwind via Vite in `resources/js`, React Router, role-based navigation layout, API client with Sanctum CSRF handling.
+- **E0-S4 (M) Filament scaffold** – Panel at `/admin`, accessible to the admin role only.
+- **E0-S5 (N) Frontend tests** – Vitest and Testing Library for `resources/js`; covers the role to navigation mapping, the session context and the API client defaults. *AC:* an unknown role and a guest both produce an empty navigation; CI runs `npm test` on every PR.
 
 ### E1 – Authentication & Roles
 - **E1-S1 (M) Login/logout via API** – Sanctum SPA authentication; `GET /api/v1/me` returns the user and role. *AC:* invalid credentials → 422; unauthenticated → 401.
