@@ -13,7 +13,7 @@ The full concept, the epics and the architecture decisions live in [`docs/kidas.
 | Backend | Laravel 13, API-first (`/api/v1`) |
 | Auth | Sanctum (SPA cookie auth) |
 | Frontend | React 19 + Tailwind 4 via Vite, React Router (`resources/js`) |
-| Admin panel | Filament (`/admin`, internal only) |
+| Admin panel | Filament 5 (`/admin`, admin role only) |
 | Database | PostgreSQL 18 via Laravel Sail |
 | Tests | Pest (feature + unit) |
 | Quality | Pint, Larastan, GitHub Actions |
@@ -63,6 +63,12 @@ Laravel serves `resources/views/app.blade.php` for every path that is not `/api`
 
 Sign-in does not exist yet (E1), so the session context resolves to a guest and the navigation stays empty until then.
 
+## Admin panel
+
+Filament serves the internal panel at `/admin`. Access is restricted to the `admin` role through `canAccessPanel()` on the user model: guests are redirected to `/admin/login`, warehouse staff and suppliers receive a 403. Roles live in `App\Enums\UserRole` (`admin`, `staff`, `supplier`) and are stored in `users.role`, which is deliberately not mass assignable so that a request can never set it.
+
+The panel has no resources yet; those arrive with the master data in E2.
+
 ## Tests & code quality
 
 ```bash
@@ -77,4 +83,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, and **E0-S3** – the React scaffold. The Filament panel (E0-S4) and authentication (E1) are not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, and **E0-S4** – the Filament panel. Authentication (E1) is not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
