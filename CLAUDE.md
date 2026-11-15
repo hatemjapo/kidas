@@ -25,3 +25,4 @@ Filament (/admin, nur intern) · PostgreSQL · Pest · Pint · Larastan
 - nichts committen, es sei denn es wurde befohlen
 - commit messages immer auf englisch
 - branch namen immer auf englisch
+- du darfst niemals pushen oder committen, ohne dass ich es freigebe
