@@ -21,7 +21,7 @@ The full concept, the epics and the architecture decisions live in [`docs/kidas.
 ## Requirements
 
 - Docker (with Compose v2)
-- PHP 8.3+ and Composer (to install dependencies before the first start)
+- PHP 8.4+ and Composer (to install dependencies before the first start)
 
 ## Setup
 
@@ -44,12 +44,15 @@ Stop the containers with `./vendor/bin/sail down`.
 ## Tests & code quality
 
 ```bash
-./vendor/bin/sail artisan test
-./vendor/bin/pint
+./vendor/bin/sail artisan test                        # Pest
+./vendor/bin/sail php vendor/bin/phpstan analyse      # Larastan
+./vendor/bin/pint                                     # code style
 ```
 
-Tests run against the `testing` database, which the PostgreSQL container creates on first start.
+Tests run with Pest against the `testing` database, which the PostgreSQL container creates on first start. Static analysis runs inside the container because PHPStan needs more memory than a typical local CLI configuration provides.
+
+Every pull request runs the same three checks on GitHub Actions in two jobs, `Quality` (Pint, Larastan) and `Tests` (Pest against a PostgreSQL service).
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL. Pest, Larastan and the CI pipeline (E0-S2), the React frontend (E0-S4), the Filament panel (E0-S5) and authentication (E1) are not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, and **E0-S2** – Pest, Pint, Larastan and the CI pipeline. The React frontend (E0-S4), the Filament panel (E0-S5) and authentication (E1) are not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
