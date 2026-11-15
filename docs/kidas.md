@@ -108,73 +108,76 @@ Echtzeit-Push-Benachrichtigungen, Rampen-Eigenschaften (z. B. Kühlung), automat
 
 ## 4. Epics & Stories
 
-Priorität: **M** = MVP (muss), **K** = Kür. Reihenfolge = empfohlene Bauweise.
+Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended build sequence.
 
-### E0 – Projekt-Setup & KI-Workflow
-- **E0-S1 (M) Laravel-Grundgerüst** – Laravel + Sail + PostgreSQL läuft lokal; `.env.example` vollständig.
-- **E0-S2 (M) Qualitäts-Pipeline** – Pest, Pint, Larastan eingerichtet; GitHub Actions führt alle drei bei jedem PR aus (mit Postgres-Service).
-- **E0-S3 (M) KI-Leitplanken** – `CLAUDE.md` (Abschnitt 6), `docs/stories/`, `docs/ai-findings.md`, `docs/adr/` angelegt.
-- **E0-S4 (M) React-Grundgerüst** – React + Tailwind via Vite unter `resources/js`, React Router, Layout mit Navigation je Rolle, API-Client mit Sanctum-CSRF.
-- **E0-S5 (M) Filament-Grundgerüst** – Panel unter `/admin`, nur für Rolle admin erreichbar.
+### E0 – Project Setup & AI Workflow
+- **E0-S1 (M) Laravel scaffold** – Laravel + Sail + PostgreSQL running locally; `.env.example` complete.
+- **E0-S2 (M) Quality pipeline** – Pest, Pint and Larastan set up; GitHub Actions runs all three on every PR (with a Postgres service).
+- **E0-S3 (M) AI guardrails** – `CLAUDE.md`, `docs/stories/`, `docs/ai-findings.md` and `docs/adr/` created.
+- **E0-S4 (M) React scaffold** – React + Tailwind via Vite in `resources/js`, React Router, role-based navigation layout, API client with Sanctum CSRF handling.
+- **E0-S5 (M) Filament scaffold** – Panel at `/admin`, accessible to the admin role only.
 
-### E1 – Authentifizierung & Rollen
-- **E1-S1 (M) Login/Logout über API** – Sanctum-SPA-Auth; `GET /api/v1/me` liefert Nutzer + Rolle. *AK:* falsche Daten → 422; nicht eingeloggt → 401.
-- **E1-S2 (M) Lieferanten-Registrierung** – Formular (Firma, Firmentelefon, Name, E-Mail, Passwort) → Status `pending`. *AK:* pending/rejected-Lieferanten können sich einloggen, aber nicht buchen (403 mit verständlicher Meldung).
-- **E1-S3 (M) Freischaltung durch Admin** – Filament-Liste offener Registrierungen; freischalten/ablehnen; Lieferant erhält E-Mail.
-- **E1-S4 (M) Rollen & Policies** – Middleware/Policies für admin, staff, supplier. *AK:* Feature-Tests decken jede Route mit jeder Rolle ab (Matrix-Test).
+### E1 – Authentication & Roles
+- **E1-S1 (M) Login/logout via API** – Sanctum SPA authentication; `GET /api/v1/me` returns the user and role. *AC:* invalid credentials → 422; unauthenticated → 401.
+- **E1-S2 (M) Supplier registration** – Form (company, company phone, name, email, password) → status `pending`. *AC:* pending/rejected suppliers can log in but cannot book (403 with a clear message).
+- **E1-S3 (M) Admin approval** – Filament list of pending registrations; approve/reject; supplier receives an email.
+- **E1-S4 (M) Roles & policies** – Middleware/policies for admin, staff and supplier. *AC:* feature tests cover every route with every role (matrix test).
 
-### E2 – Stammdaten (Admin)
-- **E2-S1 (M) Rampen verwalten** – 10 Rampen per Seeder; aktiv/inaktiv schalten.
-- **E2-S2 (M) Standard-Öffnungszeiten** – pro Wochentag offen/geschlossen + von/bis.
-- **E2-S3 (M) Standard-Schichtzeiten** – Früh/Spät mit von/bis. *AK:* Schichten überschneiden sich nicht.
-- **E2-S4 (M) Wochenvorlage Rampennutzung** – Matrix Wochentag × Schicht × Rampe → Anlieferung/Abholung, schnell klickbar.
-- **E2-S5 (M) Palettenregeln** – Stufen „bis X Paletten → Y Minuten". *AK:* Y ist Vielfaches von 15; Stufen lückenlos von 1 bis 70; Validierungsfehler verständlich.
+### E2 – Master Data (Admin)
+- **E2-S1 (M) Manage docks** – 10 docks via seeder; toggle active/inactive.
+- **E2-S2 (M) Default opening hours** – Per weekday: open/closed + from/to.
+- **E2-S3 (M) Default shift times** – Early/late shift with from/to. *AC:* shifts must not overlap.
+- **E2-S4 (M) Weekly dock usage template** – Matrix weekday × shift × dock → inbound/outbound, quick to toggle.
+- **E2-S5 (M) Pallet duration rules** – Tiers "up to X pallets → Y minutes". *AC:* Y is a multiple of 15; tiers cover 1 to 70 without gaps; clear validation errors.
 
-### E3 – Kalender, Freigabe & Ausnahmen (Admin)
-- **E3-S1 (M) Tage freigeben** – Admin gibt Tage bis max. 4 Wochen im Voraus frei → Snapshot aus Vorlagen (ADR-2). *AK:* Vorlagenänderung danach ändert freigegebene Tage nicht.
-- **E3-S2 (M) Tagesausnahme Zeiten** – Öffnungs-/Schichtzeiten eines Tages ändern oder Tag schließen (z. B. Feiertag). *AK:* Änderung, die bestehende Buchungen aus dem Fenster wirft, wird abgelehnt und nennt die betroffenen Buchungen.
-- **E3-S3 (M) Rampennutzung pro Tag/Schicht ändern** – *AK:* gesperrt, sobald auf dieser Rampe in dieser Schicht eine aktive Buchung existiert; andere Rampen bleiben änderbar.
+### E3 – Calendar, Release & Exceptions (Admin)
+- **E3-S1 (M) Release days** – Admin releases days up to 4 weeks in advance → snapshot of the templates (ADR-2). *AC:* later template changes do not affect released days.
+- **E3-S2 (M) Day-specific time overrides** – Change opening/shift times for a single day or close the day (e.g. public holiday). *AC:* a change that would push existing bookings outside the window is rejected and lists the affected bookings.
+- **E3-S3 (M) Change dock usage per day/shift** – *AC:* locked as soon as an active booking exists on that dock in that shift; other docks remain editable.
 
-### E4 – Lieferanten-Profil
-- **E4-S1 (M) Profil bearbeiten** – Firma, Firmentelefon, Kontakt.
-- **E4-S2 (M) Fahrzeuge verwalten** – Kennzeichen anlegen/löschen; Normalisierung; keine Duplikate pro Lieferant.
+### E4 – Supplier Profile
+- **E4-S1 (M) Edit profile** – Company, company phone, contact details.
+- **E4-S2 (M) Manage vehicles** – Add/remove license plates; normalization; no duplicates per supplier.
 
-### E5 – Buchung durch den Lieferanten (Kern)
-- **E5-S1 (M) Slot-Berechnung (Service)** – Eingabe: Datum, Typ, Paletten → Dauer aus Palettenregeln → freie Startzeiten im 15-Min-Raster über alle passenden Rampen. *AK (Unit-Tests!):* respektiert Öffnungs- ∩ Schichtzeit, kein Fenster über Schichtwechsel, nur freigegebene Zukunftstage, Grenze 9:30/9:30 erlaubt, Sommerzeit-Umstellung korrekt.
-- **E5-S2 (M) Slot-Vorschlag API** – `GET /api/v1/slots?date=&pallets=` liefert freie Startzeiten (ohne Rampennummer).
-- **E5-S3 (M) Buchung anlegen** – Bestellnummer, Paletten, Fahrzeug (Auswahl oder neu), Fahrertelefon, Startzeit → Rampenzuweisung unter Sperre (ADR-3/5). *AK:* paralleler Test „zwei Buchungen auf den letzten freien Slot" → genau eine gewinnt, die andere erhält 409.
-- **E5-S4 (M) Meine Buchungen** – Liste + Detail mit Status; ausschließlich eigene (fremde ID → 404).
-- **E5-S5 (M) Umbuchen** – neue Zeit/Paletten; gleiche Regeln wie Neubuchung; nur bis 3 h vorher.
-- **E5-S6 (M) Stornieren** – nur bis 3 h vorher; Grund optional.
-- **E5-S7 (M) Buchungsstrecke im Frontend** – React: Datum + Paletten → Slots wählen → Daten bestätigen → Bestätigungsseite.
+### E5 – Supplier Booking (Core)
+- **E5-S1 (M) Slot calculation (service)** – Input: date, type, pallets → duration from pallet rules → available start times on a 15-minute grid across all matching docks. *AC (unit tests!):* respects opening hours ∩ shift times, no slot spanning a shift change, only released future days, back-to-back 9:30/9:30 allowed, DST transitions handled correctly.
+- **E5-S2 (M) Slot suggestion API** – `GET /api/v1/slots?date=&pallets=` returns available start times (without dock number).
+- **E5-S3 (M) Create booking** – Order number, pallets, vehicle (select or new), driver phone, start time → dock assignment under lock (ADR-3/5). *AC:* concurrency test "two bookings for the last free slot" → exactly one succeeds, the other gets 409.
+- **E5-S4 (M) My bookings** – List + detail with status; own bookings only (foreign ID → 404).
+- **E5-S5 (M) Reschedule** – New time/pallets; same rules as a new booking; only up to 3 h before the slot.
+- **E5-S6 (M) Cancel** – Only up to 3 h before the slot; reason optional.
+- **E5-S7 (M) Booking flow in the frontend** – React: date + pallets → pick slot → confirm details → confirmation page.
 
-### E6 – Lager-Ansicht & Abfertigung (Mitarbeiter)
-- **E6-S1 (M) Tagesansicht Rampen-Zeitstrahl** – Rampen als Zeilen, Uhrzeit als Spalten, Farbe nach Typ und Status; Tageswechsel.
-- **E6-S2 (M) Abholung buchen** – Spedition, Kennzeichen, Telefon, Paletten → Slot auf Abholrampe.
-- **E6-S3 (M) Ankunft erfassen** – Kennzeichen eingeben; Abweichung → Status bleibt „angekommen" mit Markierung „Kennzeichen abweichend"; Mitarbeiter bestätigt nach Klärung mit der Firma.
-- **E6-S4 (M) Abfertigung starten / Rampe freigeben** – Start nur nach geklärtem Kennzeichen; „Rampe frei" setzt `abgeschlossen`. *AK:* unerlaubte Übergänge → 422.
-- **E6-S5 (M) Nicht erschienen** – nach Ablauf des Zeitfensters markierbar.
+### E6 – Warehouse View & Handling (Staff)
+- **E6-S1 (M) Daily dock timeline** – Docks as rows, time as columns, colored by type and status; switch between days.
+- **E6-S2 (M) Book pickup** – Carrier, license plate, phone, pallets → slot on an outbound dock.
+- **E6-S3 (M) Register arrival** – Enter license plate; on mismatch the status stays `arrived` and is flagged "plate mismatch"; staff confirms after verifying with the company.
+- **E6-S4 (M) Start handling / release dock** – Handling can only start once the plate is verified; "dock free" sets the status to `completed`. *AC:* invalid transitions → 422.
+- **E6-S5 (M) No-show** – Can be marked once the slot has passed.
 
-### E7 – Admin-Eingriffe & Benachrichtigungen
-- **E7-S1 (M) Admin bucht** – Anlieferung oder Abholung für beliebige Lieferanten, ohne 3-h-Frist.
-- **E7-S2 (M) Admin bucht um** – andere Zeit/Rampe; Pflichtfeld Grund; Rampentyp muss passen.
-- **E7-S3 (M) Admin storniert** – Pflichtfeld Grund.
-- **E7-S4 (M) Benachrichtigungen** – bei E7-S2/S3 Datenbank-Benachrichtigung + E-Mail an Lieferanten (Queue). *AK:* Inhalt enthält alte/neue Zeit und Grund.
-- **E7-S5 (M) Meldungen im Lieferanten-Konto** – Liste, gelesen/ungelesen.
+### E7 – Admin Actions & Notifications
+- **E7-S1 (M) Admin books** – Inbound or outbound for any supplier, without the 3 h restriction.
+- **E7-S2 (M) Admin reschedules** – Different time/dock; reason required; dock type must match.
+- **E7-S3 (M) Admin cancels** – Reason required.
+- **E7-S4 (M) Notifications** – On E7-S2/S3: database notification + email to the supplier (queued). *AC:* content includes old/new time and the reason.
+- **E7-S5 (M) Notifications in the supplier account** – List, read/unread.
 
-### E8 – Live-Status für den Lieferanten
-- **E8-S1 (M) Status-Anzeige** – Buchungsdetail zeigt aktuellen Status und „Ihre Rampe ist frei – Sie können anfahren", sobald die vorherige Buchung auf dieser Rampe abgeschlossen ist (Polling, z. B. alle 30 s).
-- **E8-S2 (K) Echtzeit** – Laravel Reverb/WebSockets statt Polling.
+### E8 – Live Status for Suppliers
+- **E8-S1 (M) Status display** – Booking detail shows the current status and "Your dock is free – you may arrive now" as soon as the previous booking on that dock is completed (polling, e.g. every 30 s).
+- **E8-S2 (N) Real-time** – Laravel Reverb/WebSockets instead of polling.
 
-### E9 – Abschluss & Dokumentation
-- **E9-S1 (M) Demo-Daten** – Seeder: Admin, Mitarbeiter, 3 Lieferanten (einer pending), Buchungen über 2 Wochen; Demo-Logins im README.
-- **E9-S2 (M) README vollständig** – Struktur aus Abschnitt 7.
-- **E9-S3 (K) API-Doku mit Scribe**
-- **E9-S4 (M) Security-Durchsicht** – Rate Limiting auf Login/Registrierung/Buchen, Autorisierungs-Matrix-Test, Mass-Assignment prüfen; Ergebnis in „Bekannte Einschränkungen".
-- **E9-S5 (K) Deployment** – öffentliche Demo (z. B. kleiner VPS oder Laravel Cloud).
+### E9 – Wrap-up & Documentation
+- **E9-S1 (M) Demo data** – Seeder: admin, staff, 3 suppliers (one pending), bookings across 2 weeks; demo logins in the README.
+- **E9-S2 (M) Complete README**
+- **E9-S3 (N) API docs with Scribe**
+- **E9-S4 (M) Security review** – Rate limiting on login/registration/booking, authorization matrix test, mass assignment check; results go into "Known limitations".
+- **E9-S5 (N) Deployment** – Public demo (e.g. small VPS or Laravel Cloud).
 
-### Kür-Ideen danach
-Rampen-Eigenschaften (Kühlung) · Auslastungsstatistik pro Rampe/Wochentag · iCal-Export für Lieferanten · Mehrere Benutzer pro Lieferantenfirma.
+### Future ideas
+Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.
+
+### Booking status flow
+`booked → arrived → in_progress → completed` · Special cases: `cancelled`, `no_show`
 
 ---
 
