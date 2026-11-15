@@ -26,3 +26,11 @@ Filament (/admin, nur intern) · PostgreSQL · Pest · Pint · Larastan
 - commit messages immer auf englisch
 - branch namen immer auf englisch
 - du darfst niemals pushen oder committen, ohne dass ich es freigebe
+- Verständnisfragen nur beantworten, dann anhalten. Nichts nebenbei ausprobieren und keine
+  Lösungsvarianten ausbreiten. Fällt dabei etwas Prüfbares auf: in einem Satz nennen und fragen.
+- PR-Beschreibung hat genau zwei Teile: erst als Fließtext, was neu ist, dann einen Abschnitt,
+  wie man die Änderung testet – dort nur die Projektbefehle (migrate, pest, phpstan, pint) und
+  in einem Satz, was die Tests abdecken; keine curl-Aufrufe, keine Handproben, keine artisan-
+  Hilfsbefehle. Keine Liste der geänderten Dateien – das zeigt „Files changed".
+  Nichts weiter: keine Fundberichte, keine Herleitungen, keine Gesprächsinhalte, keine Hinweise
+  auf andere Stories oder was noch kommt, und nie protokollieren, was ich entschieden habe.
