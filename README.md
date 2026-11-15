@@ -73,14 +73,15 @@ The panel has no resources yet; those arrive with the master data in E2.
 
 ```bash
 ./vendor/bin/sail artisan test                        # Pest
+./vendor/bin/sail npm test                            # Vitest
 ./vendor/bin/sail php vendor/bin/phpstan analyse      # Larastan
 ./vendor/bin/pint                                     # code style
 ```
 
-Tests run with Pest against the `testing` database, which the PostgreSQL container creates on first start. Static analysis runs inside the container because PHPStan needs more memory than a typical local CLI configuration provides.
+Tests run with Pest against the `testing` database, which the PostgreSQL container creates on first start. The React side is tested with Vitest and Testing Library; those tests live in `tests/js`. Static analysis runs inside the container because PHPStan needs more memory than a typical local CLI configuration provides.
 
-Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larastan), `Tests` (Pest against a PostgreSQL service, building the frontend first because the SPA view needs the Vite manifest) and `Frontend` (`npm ci` and `npm run build`).
+Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larastan), `Tests` (Pest against a PostgreSQL service, building the frontend first because the SPA view needs the Vite manifest) and `Frontend` (`npm ci`, `npm run build` and `npm test`).
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, and **E0-S4** – the Filament panel. Authentication (E1) is not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, and **E0-S5** – the frontend tests. Authentication (E1) is not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
