@@ -12,7 +12,7 @@ The full concept, the epics and the architecture decisions live in [`docs/kidas.
 |---|---|
 | Backend | Laravel 13, API-first (`/api/v1`) |
 | Auth | Sanctum (SPA cookie auth) |
-| Frontend | React + Tailwind via Vite (`resources/js`) |
+| Frontend | React 19 + Tailwind 4 via Vite, React Router (`resources/js`) |
 | Admin panel | Filament (`/admin`, internal only) |
 | Database | PostgreSQL 18 via Laravel Sail |
 | Tests | Pest (feature + unit) |
@@ -31,6 +31,8 @@ cp .env.example .env
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate
+./vendor/bin/sail npm install
+./vendor/bin/sail npm run build
 ```
 
 The application is then available at **http://localhost:8080**.
@@ -39,7 +41,27 @@ Ports are set in `.env`: the app uses `APP_PORT=8080` and PostgreSQL is forwarde
 
 Times are stored in UTC and displayed in `Europe/Berlin`, so `APP_TIMEZONE` stays `UTC`.
 
+For development, run `./vendor/bin/sail npm run dev` instead of the build to get Vite's dev server with hot reloading on port 5173. Run it through Sail, not on the host: the container already publishes that port.
+
 Stop the containers with `./vendor/bin/sail down`.
+
+## Frontend
+
+The React application is a single page app served by Laravel and talking to the API only.
+
+```
+resources/js/app.jsx            mounts the app
+resources/js/router.jsx         client side routes
+resources/js/layouts/           shell with the role based navigation
+resources/js/navigation.js      maps a role to its navigation items
+resources/js/auth/              session context, reads GET /api/v1/me
+resources/js/lib/api.js         axios client for /api/v1, Sanctum CSRF handling
+resources/js/pages/             pages
+```
+
+Laravel serves `resources/views/app.blade.php` for every path that is not `/api`, `/admin`, `/up`, `/storage` or `/build`, so a reload on a client side route works. The API client sends cookies and the `X-XSRF-TOKEN` header; `csrf()` fetches `/sanctum/csrf-cookie` before the first writing request.
+
+Sign-in does not exist yet (E1), so the session context resolves to a guest and the navigation stays empty until then.
 
 ## Tests & code quality
 
@@ -51,8 +73,8 @@ Stop the containers with `./vendor/bin/sail down`.
 
 Tests run with Pest against the `testing` database, which the PostgreSQL container creates on first start. Static analysis runs inside the container because PHPStan needs more memory than a typical local CLI configuration provides.
 
-Every pull request runs the same three checks on GitHub Actions in two jobs, `Quality` (Pint, Larastan) and `Tests` (Pest against a PostgreSQL service).
+Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larastan), `Tests` (Pest against a PostgreSQL service, building the frontend first because the SPA view needs the Vite manifest) and `Frontend` (`npm ci` and `npm run build`).
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, and **E0-S2** – Pest, Pint, Larastan and the CI pipeline. The React frontend (E0-S4), the Filament panel (E0-S5) and authentication (E1) are not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, and **E0-S3** – the React scaffold. The Filament panel (E0-S4) and authentication (E1) are not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

@@ -73,6 +73,17 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
       - name: Prepare environment
         run: |
           cp .env.example .env
@@ -87,3 +98,22 @@ jobs:
           DB_USERNAME: sail
           DB_PASSWORD: password
         run: ./vendor/bin/pest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
