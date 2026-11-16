@@ -23,7 +23,7 @@ test('logs the current user out', function () {
 });
 
 test('ends the session so the user endpoint stops answering', function () {
-    User::factory()->create(['email' => 'rampe@kidas.test']);
+    User::factory()->staff()->create(['email' => 'rampe@kidas.test']);
 
     postJson('/api/v1/login', [
         'email' => 'rampe@kidas.test',

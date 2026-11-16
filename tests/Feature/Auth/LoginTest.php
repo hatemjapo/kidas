@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Supplier;
 use App\Models\User;
 
 use function Pest\Laravel\assertAuthenticated;
@@ -27,7 +28,7 @@ test('logs a user in with correct credentials', function () {
 });
 
 test('keeps the password out of the login response', function () {
-    User::factory()->create(['email' => 'rampe@kidas.test']);
+    User::factory()->staff()->create(['email' => 'rampe@kidas.test']);
 
     postJson('/api/v1/login', [
         'email' => 'rampe@kidas.test',
@@ -39,7 +40,7 @@ test('keeps the password out of the login response', function () {
 });
 
 test('rejects a wrong password', function () {
-    User::factory()->create(['email' => 'rampe@kidas.test']);
+    User::factory()->staff()->create(['email' => 'rampe@kidas.test']);
 
     postJson('/api/v1/login', [
         'email' => 'rampe@kidas.test',
@@ -76,7 +77,7 @@ test('requires a valid email and a password', function (array $payload, string $
 ]);
 
 test('throttles repeated failed attempts', function () {
-    User::factory()->create(['email' => 'rampe@kidas.test']);
+    User::factory()->staff()->create(['email' => 'rampe@kidas.test']);
 
     $credentials = [
         'email' => 'rampe@kidas.test',
@@ -88,4 +89,70 @@ test('throttles repeated failed attempts', function () {
     }
 
     postJson('/api/v1/login', $credentials)->assertStatus(429);
+});
+
+test('lets an approved supplier in', function () {
+    $supplier = Supplier::factory()->approved()->create();
+
+    postJson('/api/v1/login', [
+        'email' => $supplier->user->email,
+        'password' => 'password',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.role', 'supplier');
+
+    assertAuthenticated();
+});
+
+test('keeps a supplier out while the registration is being reviewed', function () {
+    $supplier = Supplier::factory()->pending()->create();
+
+    postJson('/api/v1/login', [
+        'email' => $supplier->user->email,
+        'password' => 'password',
+    ])
+        ->assertForbidden()
+        ->assertJsonPath(
+            'message',
+            'Your registration is still being reviewed. You will receive an email as soon as it is approved.'
+        );
+
+    assertGuest();
+});
+
+test('keeps a rejected supplier out', function () {
+    $supplier = Supplier::factory()->rejected()->create();
+
+    postJson('/api/v1/login', [
+        'email' => $supplier->user->email,
+        'password' => 'password',
+    ])
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Your registration was rejected. Please contact the warehouse team.');
+
+    assertGuest();
+});
+
+test('keeps a supplier without a registration out', function () {
+    $user = User::factory()->supplier()->create();
+
+    postJson('/api/v1/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertForbidden();
+
+    assertGuest();
+});
+
+test('says nothing about the status when the password is wrong', function () {
+    $supplier = Supplier::factory()->pending()->create();
+
+    postJson('/api/v1/login', [
+        'email' => $supplier->user->email,
+        'password' => 'wrong-password',
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('email');
+
+    assertGuest();
 });

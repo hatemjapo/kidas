@@ -61,7 +61,7 @@ resources/js/pages/             pages
 
 Laravel serves `resources/views/app.blade.php` for every path that is not `/api`, `/admin`, `/up`, `/storage` or `/build`, so a reload on a client side route works. The API client sends cookies and the `X-XSRF-TOKEN` header; `csrf()` fetches `/sanctum/csrf-cookie` before the first writing request.
 
-Every route except `/login` sits behind the session: as long as `GET /api/v1/me` answers with 401, the app redirects to the login form. After signing in, the role decides which navigation items appear, and the header offers the way out again.
+Every route except `/login` and `/register` sits behind the session: as long as `GET /api/v1/me` answers with 401, the app redirects to the login form. After signing in, the role decides which navigation items appear, and the header offers the way out again.
 
 ## Authentication
 
@@ -69,11 +69,14 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
+| `POST` | `/api/v1/register` | registers a supplier company, status `pending` |
 | `POST` | `/api/v1/login` | signs a user in, answers with the user and the role |
 | `POST` | `/api/v1/logout` | ends the session |
 | `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
 
-Wrong credentials answer with `422` and a field error, so the login form can show it. The login endpoint allows six attempts per minute and IP address.
+Wrong credentials answer with `422` and a field error, so the login form can show it. Both endpoints allow six attempts per minute and IP address.
+
+A supplier registers through `/register` and lands on the status `pending`. Until an admin approves the registration, signing in answers with `403` and the reason; the approval mail that tells the supplier to sign in arrives with E1-S3. The status and the role are set by the application, never by the request.
 
 ## Admin panel
 
@@ -100,4 +103,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, and **E1-S1** – login and logout over the API. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, and **E1-S2** – the supplier registration. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
