@@ -16,6 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class SupplierResource extends Resource
 {
@@ -80,7 +81,8 @@ class SupplierResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalDescription('The supplier can sign in afterwards and will receive an email.')
-                    ->visible(fn (Supplier $record): bool => $record->status === SupplierStatus::Pending)
+                    ->visible(fn (Supplier $record): bool => $record->status === SupplierStatus::Pending
+                        && Gate::allows('decide', $record))
                     ->action(function (Supplier $record): void {
                         $admin = auth()->user();
                         assert($admin instanceof User);
@@ -97,7 +99,8 @@ class SupplierResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalDescription('The supplier stays locked out and will receive an email.')
-                    ->visible(fn (Supplier $record): bool => $record->status === SupplierStatus::Pending)
+                    ->visible(fn (Supplier $record): bool => $record->status === SupplierStatus::Pending
+                        && Gate::allows('decide', $record))
                     ->action(function (Supplier $record): void {
                         app(DecideSupplierRegistration::class)->reject($record);
 

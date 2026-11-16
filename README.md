@@ -78,6 +78,23 @@ Wrong credentials answer with `422` and a field error, so the login form can sho
 
 A supplier registers through `/register` and lands on the status `pending`. Until an admin approves the registration, signing in answers with `403` and the reason; the approval mail carries the link that invites the supplier in. The status and the role are set by the application, never by the request.
 
+## Roles
+
+Three roles live in `App\Enums\UserRole`. Admins work in the Filament panel, warehouse staff and suppliers work in the React app, and all three share the same API.
+
+| | Admin | Warehouse staff | Supplier |
+| --- | --- | --- | --- |
+| Filament panel | yes | no | no |
+| App shell | yes | yes | yes |
+| Dock schedule | yes | yes | no |
+| Bookings | yes | no | own only |
+
+Three gates keep that apart, each at its own level. `canAccessPanel()` decides who reaches Filament. The `role` middleware closes an API route to foreign roles (`->middleware('role:staff')`), answering `401` for a guest and `403` for the wrong role. Policies decide what somebody may do with a single record; `SupplierPolicy` is the first one, and the panel asks it before offering the decision buttons. Which records a role may see at all — a supplier sees only their own bookings — stays with the policies as well.
+
+`tests/Feature/RouteMatrixTest.php` walks every route that exists today with every role and holds the expected answer, so a new route that forgets its gate shows up there.
+
+In the browser the router repeats the same rules: the navigation only shows what a role may open, and typing a foreign path into the address bar sends the visitor back to the dashboard. The browser side is convenience, not protection — the API decides.
+
 ## Admin panel
 
 Filament serves the internal panel at `/admin`. Access is restricted to the `admin` role through `canAccessPanel()` on the user model: guests are redirected to `/admin/login`, warehouse staff and suppliers receive a 403. Roles live in `App\Enums\UserRole` (`admin`, `staff`, `supplier`) and are stored in `users.role`, which is deliberately not mass assignable so that a request can never set it.
@@ -105,4 +122,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, and **E1-S3** – the approval in the admin panel. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, and **E1-S4** – roles and policies. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

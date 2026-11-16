@@ -29,12 +29,21 @@ test('approving records the decision and tells the supplier', function () {
 });
 
 test('the approval mail carries the link to the login form', function () {
-    $supplier = Supplier::factory()->pending()->create();
+    $supplier = Supplier::factory()->pending()->create(['company_name' => 'Nordfracht GmbH']);
 
     $rendered = (new SupplierApproved($supplier))->render();
 
     expect($rendered)->toContain(url('/login'))
-        ->and($rendered)->toContain($supplier->company_name);
+        ->and($rendered)->toContain('Nordfracht GmbH');
+});
+
+test('the mails escape a company name that carries markup', function () {
+    $supplier = Supplier::factory()->pending()->create(['company_name' => "O'Keefe & <b>Sons</b>"]);
+
+    $rendered = (new SupplierApproved($supplier))->render();
+
+    expect($rendered)->toContain('O&#039;Keefe &amp; &lt;b&gt;Sons&lt;/b&gt;');
+    expect($rendered)->not->toContain('<b>Sons</b>');
 });
 
 test('rejecting records the decision and tells the supplier', function () {
