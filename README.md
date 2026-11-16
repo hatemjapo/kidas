@@ -76,13 +76,15 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 
 Wrong credentials answer with `422` and a field error, so the login form can show it. Both endpoints allow six attempts per minute and IP address.
 
-A supplier registers through `/register` and lands on the status `pending`. Until an admin approves the registration, signing in answers with `403` and the reason; the approval mail that tells the supplier to sign in arrives with E1-S3. The status and the role are set by the application, never by the request.
+A supplier registers through `/register` and lands on the status `pending`. Until an admin approves the registration, signing in answers with `403` and the reason; the approval mail carries the link that invites the supplier in. The status and the role are set by the application, never by the request.
 
 ## Admin panel
 
 Filament serves the internal panel at `/admin`. Access is restricted to the `admin` role through `canAccessPanel()` on the user model: guests are redirected to `/admin/login`, warehouse staff and suppliers receive a 403. Roles live in `App\Enums\UserRole` (`admin`, `staff`, `supplier`) and are stored in `users.role`, which is deliberately not mass assignable so that a request can never set it.
 
-The panel has no resources yet; those arrive with the master data in E2.
+Supplier registrations are the first thing the panel manages. The list opens on the open registrations, and an admin approves or rejects each one; both decisions send the supplier an email, the approval one with the link to the sign-in form. A registration can only be decided once, and the panel offers no way to create or edit one — those come in through the API. Master data follows in E2.
+
+`MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
 
@@ -103,4 +105,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, and **E1-S2** – the supplier registration. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, and **E1-S3** – the approval in the admin panel. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
