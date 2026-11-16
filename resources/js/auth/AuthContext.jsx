@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import api from '../lib/api';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import api, { csrf } from '../lib/api';
 
 const AuthContext = createContext(null);
 
@@ -32,8 +32,27 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
+    const login = useCallback(async (credentials) => {
+        await csrf();
+
+        const response = await api.post('/login', credentials);
+        const signedIn = response.data.data ?? response.data;
+
+        setUser(signedIn);
+
+        return signedIn;
+    }, []);
+
+    const logout = useCallback(async () => {
+        await api.post('/logout');
+
+        setUser(null);
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ user, role: user?.role ?? null, loading, setUser }}>
+        <AuthContext.Provider
+            value={{ user, role: user?.role ?? null, loading, setUser, login, logout }}
+        >
             {children}
         </AuthContext.Provider>
     );
