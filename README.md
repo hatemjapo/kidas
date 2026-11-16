@@ -69,6 +69,10 @@ Filament serves the internal panel at `/admin`. Access is restricted to the `adm
 
 The panel has no resources yet; those arrive with the master data in E2.
 
+### The first admin
+
+`./vendor/bin/sail artisan make:filament-user` creates a user on the role `staff`, the default of the `role` column. To let that user into the panel, set their `role` to `admin` in the database by hand. The role is not mass assignable, so no request and no command can hand it out; the demo seeder in E9-S1 replaces this step.
+
 ## Tests & code quality
 
 ```bash
