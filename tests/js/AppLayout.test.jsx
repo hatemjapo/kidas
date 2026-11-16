@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
@@ -9,8 +9,12 @@ vi.mock('../../resources/js/auth/AuthContext', () => ({
 const { useAuth } = await import('../../resources/js/auth/AuthContext');
 const { default: AppLayout } = await import('../../resources/js/layouts/AppLayout');
 
+const logout = vi.fn();
+
 function renderAs(role, loading = false) {
-    useAuth.mockReturnValue({ user: null, role, loading, setUser: vi.fn() });
+    const user = role === null ? null : { role };
+
+    useAuth.mockReturnValue({ user, role, loading, setUser: vi.fn(), login: vi.fn(), logout });
 
     return render(
         <MemoryRouter>
@@ -18,6 +22,10 @@ function renderAs(role, loading = false) {
         </MemoryRouter>
     );
 }
+
+beforeEach(() => {
+    logout.mockReset();
+});
 
 test('shows a supplier their bookings but not the dock schedule', () => {
     renderAs('supplier');
@@ -52,4 +60,18 @@ test('says so while the session is still being resolved', () => {
     renderAs(null, true);
 
     expect(screen.getByText('Loading…')).toBeInTheDocument();
+});
+
+test('offers a signed in user the way out', () => {
+    renderAs('staff');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    expect(logout).toHaveBeenCalled();
+});
+
+test('offers a guest no way out', () => {
+    renderAs(null);
+
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
 });

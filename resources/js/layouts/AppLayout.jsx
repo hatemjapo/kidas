@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { navigationFor } from '../navigation';
 
 export default function AppLayout() {
-    const { role, loading } = useAuth();
+    const { user, role, loading, logout } = useAuth();
     const items = navigationFor(role);
 
     return (
@@ -31,9 +31,21 @@ export default function AppLayout() {
                         ))}
                     </nav>
 
-                    <span className="text-sm text-slate-500">
-                        {loading ? 'Loading…' : (role ?? 'Not signed in')}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-slate-500">
+                            {loading ? 'Loading…' : (role ?? 'Not signed in')}
+                        </span>
+
+                        {user !== null && (
+                            <button
+                                type="button"
+                                onClick={logout}
+                                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                Sign out
+                            </button>
+                        )}
+                    </div>
                 </div>
             </header>
 
