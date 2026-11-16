@@ -105,3 +105,32 @@ test('sends a signed in visitor away from the login form', () => {
 
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
 });
+
+test('shows why a supplier without approval is kept out', async () => {
+    const login = rejectWith(403, {
+        message: 'Your registration is still being reviewed. You will receive an email as soon as it is approved.',
+    });
+
+    renderLogin(login);
+    fillIn('lena@nordfracht.test', 'open-sesame-42');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Your registration is still being reviewed.'
+    );
+});
+
+test('points new suppliers at the registration form', () => {
+    renderLogin(vi.fn());
+
+    expect(screen.getByRole('link', { name: 'Register your company' })).toHaveAttribute(
+        'href',
+        '/register'
+    );
+});
+
+test('marks both fields as required', () => {
+    renderLogin(vi.fn());
+
+    expect(screen.getByLabelText('Email')).toBeRequired();
+    expect(screen.getByLabelText('Password')).toBeRequired();
+});

@@ -5,12 +5,14 @@ import Bookings from './pages/Bookings';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
+import Register from './pages/Register';
 import Schedule from './pages/Schedule';
 
 export default function Router() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             <Route element={<RequireAuth />}>
                 <Route element={<AppLayout />}>

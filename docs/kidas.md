@@ -120,7 +120,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 
 ### E1 – Authentication & Roles
 - **E1-S1 (M) Login/logout via API** – Sanctum SPA authentication; `GET /api/v1/me` returns the user and role. *AC:* invalid credentials → 422; unauthenticated → 401.
-- **E1-S2 (M) Supplier registration** – Form (company, company phone, name, email, password) → status `pending`. *AC:* pending/rejected suppliers can log in but cannot book (403 with a clear message).
+- **E1-S2 (M) Supplier registration** – Form (company, company phone, name, email, password) → status `pending`. *AC:* without approval there is no sign-in (403 with a clear message); the registration answers with a notice that the request is being reviewed and that an email will follow.
 - **E1-S3 (M) Admin approval** – Filament list of pending registrations; approve/reject; supplier receives an email.
 - **E1-S4 (M) Roles & policies** – Middleware/policies for admin, staff and supplier. *AC:* feature tests cover every route with every role (matrix test).
 
