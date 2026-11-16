@@ -54,20 +54,54 @@ resources/js/app.jsx            mounts the app
 resources/js/router.jsx         client side routes
 resources/js/layouts/           shell with the role based navigation
 resources/js/navigation.js      maps a role to its navigation items
-resources/js/auth/              session context, reads GET /api/v1/me
+resources/js/auth/              session context and the route guard
 resources/js/lib/api.js         axios client for /api/v1, Sanctum CSRF handling
 resources/js/pages/             pages
 ```
 
 Laravel serves `resources/views/app.blade.php` for every path that is not `/api`, `/admin`, `/up`, `/storage` or `/build`, so a reload on a client side route works. The API client sends cookies and the `X-XSRF-TOKEN` header; `csrf()` fetches `/sanctum/csrf-cookie` before the first writing request.
 
-Sign-in does not exist yet (E1), so the session context resolves to a guest and the navigation stays empty until then.
+Every route except `/login` and `/register` sits behind the session: as long as `GET /api/v1/me` answers with 401, the app redirects to the login form. After signing in, the role decides which navigation items appear, and the header offers the way out again.
+
+## Authentication
+
+The SPA authenticates through Sanctum's cookie based session, not through tokens.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/v1/register` | registers a supplier company, status `pending` |
+| `POST` | `/api/v1/login` | signs a user in, answers with the user and the role |
+| `POST` | `/api/v1/logout` | ends the session |
+| `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
+
+Wrong credentials answer with `422` and a field error, so the login form can show it. Both endpoints allow six attempts per minute and IP address.
+
+A supplier registers through `/register` and lands on the status `pending`. Until an admin approves the registration, signing in answers with `403` and the reason; the approval mail carries the link that invites the supplier in. The status and the role are set by the application, never by the request.
+
+## Roles
+
+Three roles live in `App\Enums\UserRole`. Admins work in the Filament panel, warehouse staff and suppliers work in the React app, and all three share the same API.
+
+| | Admin | Warehouse staff | Supplier |
+| --- | --- | --- | --- |
+| Filament panel | yes | no | no |
+| App shell | yes | yes | yes |
+| Dock schedule | yes | yes | no |
+| Bookings | yes | no | own only |
+
+Three gates keep that apart, each at its own level. `canAccessPanel()` decides who reaches Filament. The `role` middleware closes an API route to foreign roles (`->middleware('role:staff')`), answering `401` for a guest and `403` for the wrong role. Policies decide what somebody may do with a single record; `SupplierPolicy` is the first one, and the panel asks it before offering the decision buttons. Which records a role may see at all — a supplier sees only their own bookings — stays with the policies as well.
+
+`tests/Feature/RouteMatrixTest.php` walks every route that exists today with every role and holds the expected answer, so a new route that forgets its gate shows up there.
+
+In the browser the router repeats the same rules: the navigation only shows what a role may open, and typing a foreign path into the address bar sends the visitor back to the dashboard. The browser side is convenience, not protection — the API decides.
 
 ## Admin panel
 
 Filament serves the internal panel at `/admin`. Access is restricted to the `admin` role through `canAccessPanel()` on the user model: guests are redirected to `/admin/login`, warehouse staff and suppliers receive a 403. Roles live in `App\Enums\UserRole` (`admin`, `staff`, `supplier`) and are stored in `users.role`, which is deliberately not mass assignable so that a request can never set it.
 
-The panel has no resources yet; those arrive with the master data in E2.
+Supplier registrations are the first thing the panel manages. The list opens on the open registrations, and an admin approves or rejects each one; both decisions send the supplier an email, the approval one with the link to the sign-in form. A registration can only be decided once, and the panel offers no way to create or edit one — those come in through the API. Master data follows in E2.
+
+`MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
 
@@ -88,4 +122,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, and **E0-S5** – the frontend tests. Authentication (E1) is not in place yet, which is why this README covers the setup only. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, and **E1-S4** – roles and policies. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
