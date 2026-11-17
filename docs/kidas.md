@@ -20,8 +20,8 @@ Ein Lager mit **10 Rampen** erhält täglich Anlieferungen und wird von Speditio
 **Admin** (Admin-Panel)
 - Legt Standard-Öffnungszeiten und Standard-Schichtzeiten (Früh-/Spätschicht) fest.
 - Überschreibt diese pro Tag, z. B. Feiertag oder Rampe nur bis 12 Uhr verfügbar.
-- Legt pro Wochentag, Schicht und Rampe die Nutzung fest (Anlieferung oder Abholung) und kann sie pro Tag ändern. Beispiel: Montag-Frühschicht 7 Rampen Anlieferung / 3 Abholung, Dienstag-Frühschicht 3 Anlieferung / 7 Abholung.
-- Gibt Tage zur Buchung frei (höchstens 4 Wochen im Voraus).
+- Legt beim Freigeben eines Tages pro Schicht und Rampe die Nutzung fest (Anlieferung oder Abholung) und kann sie für diesen Tag später ändern. Beispiel: Montag-Frühschicht 7 Rampen Anlieferung / 3 Abholung; der Montag eine Woche später kann ganz anders aussehen.
+- Gibt Tage zur Buchung frei. Vergangene Tage lassen sich nicht mehr bearbeiten.
 - Definiert die Blockzeit nach Palettenanzahl in 15-Minuten-Schritten, z. B. bis 10 Paletten = 15 Min., bis 20 Paletten = 30 Min. (maximal 70 Paletten).
 - Schaltet registrierte Lieferanten frei.
 - Bucht Anlieferungen und Abholungen, bucht um und storniert jederzeit – der Lieferant wird mit Angabe des Grundes benachrichtigt.
@@ -48,7 +48,7 @@ Ein Lager mit **10 Rampen** erhält täglich Anlieferungen und wird von Speditio
 
 - Keine Buchung außerhalb der Öffnungs- und Schichtzeiten; ein Zeitfenster darf nicht über einen Schichtwechsel gehen.
 - Keine Überschneidungen auf derselben Rampe; direkt anschließende Zeitfenster (Ende 9:30 / Beginn 9:30) sind erlaubt.
-- Nur zukünftige, freigegebene Tage sind buchbar (höchstens 4 Wochen im Voraus).
+- Nur zukünftige, freigegebene Tage sind buchbar.
 - Umbuchen und Stornieren durch den Lieferanten nur bis 3 Stunden vor Termin; der Admin darf jederzeit.
 - Die Nutzung einer Rampe (Anlieferung/Abholung) ist für eine Schicht nicht mehr änderbar, sobald auf dieser Rampe in dieser Schicht eine Buchung besteht.
 - Maximal 70 Paletten pro Buchung.
@@ -76,11 +76,11 @@ Echtzeit-Push-Benachrichtigungen, Rampen-Eigenschaften (z. B. Kühlung), automat
 ### Architektur-Entscheidungen (ADRs, kurz)
 
 - **ADR-1 – API-first + Filament:** Externe Nutzer (Lieferant) und Lager arbeiten über die API/React-App. Das Admin-Panel ist intern und nutzt Filament direkt auf den Domain-Services. Beide Wege rufen **dieselben Service-Klassen** auf – Regeln existieren nur einmal.
-- **ADR-2 – Freigabe = Snapshot:** Beim Freigeben eines Tages werden Öffnungszeiten, Schichtzeiten und Rampennutzung aus der Wochenvorlage in konkrete Tagesdatensätze kopiert. Spätere Änderungen an der Vorlage betreffen nur noch nicht freigegebene Tage. Dadurch kann eine Vorlagenänderung nie unbemerkt bestehende Buchungen ungültig machen.
+- **ADR-2 – Freigabe = Festschreibung:** Beim Freigeben eines Tages werden die Standard-Öffnungszeiten und Standard-Schichtzeiten in konkrete Tagesdatensätze kopiert; die Rampennutzung wird für genau diesen Tag festgelegt. Spätere Änderungen an den Standardwerten betreffen nur noch nicht freigegebene Tage. Dadurch kann eine Änderung der Vorgaben nie unbemerkt bestehende Buchungen ungültig machen. Es gibt bewusst keine Wochenvorlage: Jeder Tag wird einzeln entschieden, derselbe Wochentag kann von Woche zu Woche anders aussehen.
 - **ADR-3 – Doppelbuchungen:** Buchen läuft in einer DB-Transaktion mit Sperre auf die Rampe (`lockForUpdate`) plus Überlappungsprüfung. Zusätzlich verhindert ein Postgres-Exclusion-Constraint (`EXCLUDE USING gist (dock_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&)` für aktive Buchungen) Überschneidungen auf DB-Ebene. Halboffene Intervalle `[start, ende)` → direkt anschließende Fenster sind erlaubt.
 - **ADR-4 – Status als Enum + Übergangstabelle:** Erlaubte Statusübergänge zentral definiert; jeder Übergang wird in `booking_events` protokolliert (wer, wann, von → nach, Notiz).
 - **ADR-5 – Rampe wird vom System zugewiesen:** Lieferant wählt nur die Zeit; die Rampe wird beim Speichern unter Sperre vergeben (niedrigste freie Rampennummer des passenden Typs). Grund: einfachere Bedienung, kein Wettlauf um „Lieblingsrampen".
-- **ADR-6 – Konfigurierbare Fristen:** Stornofrist (3 h), Buchungshorizont (4 Wochen) und Max-Paletten (70) liegen in `config/booking.php` – zentral und leicht änderbar.
+- **ADR-6 – Konfigurierbare Fristen:** Stornofrist (3 h) und Max-Paletten (70) liegen in `config/booking.php` – zentral und leicht änderbar. Einen Buchungshorizont gibt es nicht: Was freigegeben ist, ist buchbar.
 
 ---
 
@@ -94,10 +94,9 @@ Echtzeit-Push-Benachrichtigungen, Rampen-Eigenschaften (z. B. Kühlung), automat
 | `docks` | number, name, is_active |
 | `shift_defaults` | shift (early / late), starts_at, ends_at (Uhrzeit) |
 | `opening_defaults` | weekday, opens_at, closes_at, is_closed |
-| `dock_usage_templates` | weekday, shift, dock_id, usage (inbound / outbound) |
 | `pallet_rules` | max_pallets, duration_minutes (Vielfaches von 15; Stufen lückenlos bis 70) |
-| `calendar_days` | date, is_released, released_at, is_closed, opens_at, closes_at, early_start/end, late_start/end, note |
-| `dock_day_usages` | calendar_day_id, shift, dock_id, usage – entsteht bei Freigabe (Snapshot) |
+| `calendar_days` | date, is_released, released_at, is_closed, opens_at, closes_at, early_start/end, late_start/end |
+| `dock_day_usages` | calendar_day_id, shift, dock_id, usage – wird bei der Freigabe des Tages festgelegt |
 | `bookings` | type (inbound / outbound), dock_id, supplier_id (nullable bei Abholung), carrier_name, order_number, pallets, license_plate, driver_phone, starts_at, ends_at, `status`, created_by, arrived_at, arrived_plate, plate_mismatch, plate_verified_by, started_at, completed_at, cancelled_at, cancel_reason |
 | `booking_events` | booking_id, user_id, from_status, to_status, note, created_at |
 | `notifications` | Laravel-Standard (Datenbank-Benachrichtigungen) |
@@ -128,11 +127,11 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E2-S1 (M) Manage docks** – 10 docks created by the migration; toggle active/inactive.
 - **E2-S2 (M) Default opening hours** – Per weekday: open/closed + from/to.
 - **E2-S3 (M) Default shift times** – Early/late shift with from/to. *AC:* shifts must not overlap.
-- **E2-S4 (M) Weekly dock usage template** – Matrix weekday × shift × dock → inbound/outbound, quick to toggle.
+- **E2-S4 (M) Define days** – Month calendar in the panel; a day opens into an editor with the usage per dock and shift, the opening times and the shift times of that day, prefilled from the defaults and editable here. A switch releases the day; every day starts unreleased. *AC:* the calendar marks released and unreleased days; saving writes the whole day at once; a day keeps its own times once it is released.
 - **E2-S5 (M) Pallet duration rules** – Tiers "up to X pallets → Y minutes". *AC:* Y is a multiple of 15; tiers cover 1 to 70 without gaps; clear validation errors.
 
 ### E3 – Calendar, Release & Exceptions (Admin)
-- **E3-S1 (M) Release days** – Admin releases days up to 4 weeks in advance → snapshot of the templates (ADR-2). *AC:* later template changes do not affect released days.
+- **E3-S1 (M) Release days** – to be reformulated once the day editor from E2-S4 is in place.
 - **E3-S2 (M) Day-specific time overrides** – Change opening/shift times for a single day or close the day (e.g. public holiday). *AC:* a change that would push existing bookings outside the window is rejected and lists the affected bookings.
 - **E3-S3 (M) Change dock usage per day/shift** – *AC:* locked as soon as an active booking exists on that dock in that shift; other docks remain editable.
 
