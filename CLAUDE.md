@@ -28,9 +28,11 @@ Filament (/admin, nur intern) · PostgreSQL · Pest · Pint · Larastan
 - du darfst niemals pushen oder committen, ohne dass ich es freigebe
 - Verständnisfragen nur beantworten, dann anhalten. Nichts nebenbei ausprobieren und keine
   Lösungsvarianten ausbreiten. Fällt dabei etwas Prüfbares auf: in einem Satz nennen und fragen.
-- PR-Beschreibung hat genau zwei Teile: erst als Fließtext, was neu ist, dann einen Abschnitt,
-  wie man die Änderung testet – dort nur die Projektbefehle (migrate, pest, phpstan, pint) und
-  in einem Satz, was die Tests abdecken; keine curl-Aufrufe, keine Handproben, keine artisan-
-  Hilfsbefehle. Keine Liste der geänderten Dateien – das zeigt „Files changed".
+- PR-Beschreibung hat genau zwei Teile und bleibt kurz und übersichtlich: erst zwei bis drei
+  Sätze Fließtext, was neu ist und was man damit tun kann, dann ein Abschnitt „How to test"
+  mit den Befehlen, die man dafür ausführen muss (z. B. migrate).
+  Nicht aufzählen, was die Tests abdecken – dafür läuft die Pipeline.
+  Keine Liste der geänderten Dateien – das zeigt „Files changed". Keine curl-Aufrufe,
+  keine Handproben, keine artisan-Hilfsbefehle.
   Nichts weiter: keine Fundberichte, keine Herleitungen, keine Gesprächsinhalte, keine Hinweise
   auf andere Stories oder was noch kommt, und nie protokollieren, was ich entschieden habe.
