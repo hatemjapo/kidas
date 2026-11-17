@@ -77,7 +77,7 @@ Echtzeit-Push-Benachrichtigungen, Rampen-Eigenschaften (z. B. Kühlung), automat
 
 - **ADR-1 – API-first + Filament:** Externe Nutzer (Lieferant) und Lager arbeiten über die API/React-App. Das Admin-Panel ist intern und nutzt Filament direkt auf den Domain-Services. Beide Wege rufen **dieselben Service-Klassen** auf – Regeln existieren nur einmal.
 - **ADR-2 – Freigabe = Snapshot:** Beim Freigeben eines Tages werden Öffnungszeiten, Schichtzeiten und Rampennutzung aus der Wochenvorlage in konkrete Tagesdatensätze kopiert. Spätere Änderungen an der Vorlage betreffen nur noch nicht freigegebene Tage. Dadurch kann eine Vorlagenänderung nie unbemerkt bestehende Buchungen ungültig machen.
-- **ADR-3 – Doppelbuchungen:** Buchen läuft in einer DB-Transaktion mit Sperre auf die Rampe (`lockForUpdate`) plus Überlappungsprüfung. Zusätzlich verhindert ein Postgres-Exclusion-Constraint (`EXCLUDE USING gist (ramp_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&)` für aktive Buchungen) Überschneidungen auf DB-Ebene. Halboffene Intervalle `[start, ende)` → direkt anschließende Fenster sind erlaubt.
+- **ADR-3 – Doppelbuchungen:** Buchen läuft in einer DB-Transaktion mit Sperre auf die Rampe (`lockForUpdate`) plus Überlappungsprüfung. Zusätzlich verhindert ein Postgres-Exclusion-Constraint (`EXCLUDE USING gist (dock_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&)` für aktive Buchungen) Überschneidungen auf DB-Ebene. Halboffene Intervalle `[start, ende)` → direkt anschließende Fenster sind erlaubt.
 - **ADR-4 – Status als Enum + Übergangstabelle:** Erlaubte Statusübergänge zentral definiert; jeder Übergang wird in `booking_events` protokolliert (wer, wann, von → nach, Notiz).
 - **ADR-5 – Rampe wird vom System zugewiesen:** Lieferant wählt nur die Zeit; die Rampe wird beim Speichern unter Sperre vergeben (niedrigste freie Rampennummer des passenden Typs). Grund: einfachere Bedienung, kein Wettlauf um „Lieblingsrampen".
 - **ADR-6 – Konfigurierbare Fristen:** Stornofrist (3 h), Buchungshorizont (4 Wochen) und Max-Paletten (70) liegen in `config/booking.php` – zentral und leicht änderbar.
@@ -91,14 +91,14 @@ Echtzeit-Push-Benachrichtigungen, Rampen-Eigenschaften (z. B. Kühlung), automat
 | `users` | name, email, password, `role` (admin / staff / supplier) |
 | `suppliers` | user_id, company_name, company_phone, `status` (pending / approved / rejected), approved_at, approved_by |
 | `vehicles` | supplier_id, license_plate (normalisiert: Großbuchstaben, ohne Leer-/Bindestriche) |
-| `ramps` | number (1–10), name, is_active |
+| `docks` | number, name, is_active |
 | `shift_defaults` | shift (early / late), starts_at, ends_at (Uhrzeit) |
 | `opening_defaults` | weekday, opens_at, closes_at, is_closed |
-| `ramp_usage_templates` | weekday, shift, ramp_id, usage (inbound / outbound) |
+| `dock_usage_templates` | weekday, shift, dock_id, usage (inbound / outbound) |
 | `pallet_rules` | max_pallets, duration_minutes (Vielfaches von 15; Stufen lückenlos bis 70) |
 | `calendar_days` | date, is_released, released_at, is_closed, opens_at, closes_at, early_start/end, late_start/end, note |
-| `ramp_day_usages` | calendar_day_id, shift, ramp_id, usage – entsteht bei Freigabe (Snapshot) |
-| `bookings` | type (inbound / outbound), ramp_id, supplier_id (nullable bei Abholung), carrier_name, order_number, pallets, license_plate, driver_phone, starts_at, ends_at, `status`, created_by, arrived_at, arrived_plate, plate_mismatch, plate_verified_by, started_at, completed_at, cancelled_at, cancel_reason |
+| `dock_day_usages` | calendar_day_id, shift, dock_id, usage – entsteht bei Freigabe (Snapshot) |
+| `bookings` | type (inbound / outbound), dock_id, supplier_id (nullable bei Abholung), carrier_name, order_number, pallets, license_plate, driver_phone, starts_at, ends_at, `status`, created_by, arrived_at, arrived_plate, plate_mismatch, plate_verified_by, started_at, completed_at, cancelled_at, cancel_reason |
 | `booking_events` | booking_id, user_id, from_status, to_status, note, created_at |
 | `notifications` | Laravel-Standard (Datenbank-Benachrichtigungen) |
 
@@ -125,7 +125,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E1-S4 (M) Roles & policies** – Middleware/policies for admin, staff and supplier. *AC:* feature tests cover every route with every role (matrix test).
 
 ### E2 – Master Data (Admin)
-- **E2-S1 (M) Manage docks** – 10 docks via seeder; toggle active/inactive.
+- **E2-S1 (M) Manage docks** – 10 docks created by the migration; toggle active/inactive.
 - **E2-S2 (M) Default opening hours** – Per weekday: open/closed + from/to.
 - **E2-S3 (M) Default shift times** – Early/late shift with from/to. *AC:* shifts must not overlap.
 - **E2-S4 (M) Weekly dock usage template** – Matrix weekday × shift × dock → inbound/outbound, quick to toggle.
@@ -173,6 +173,9 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E9-S3 (N) API docs with Scribe**
 - **E9-S4 (M) Security review** – Rate limiting on login/registration/booking, authorization matrix test, mass assignment check; results go into "Known limitations".
 - **E9-S5 (N) Deployment** – Public demo (e.g. small VPS or Laravel Cloud).
+
+### E10 – Adjustments
+- **E10-S1 (N) Remove the skeleton seeder** – `DatabaseSeeder` still creates the example user from the Laravel skeleton. *AC:* `db:seed` creates nothing that the application does not need.
 
 ### Future ideas
 Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.

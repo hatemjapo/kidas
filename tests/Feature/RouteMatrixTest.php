@@ -30,6 +30,7 @@ test('the panel belongs to admins alone', function (string $role, int $status) {
 
     get('/admin')->assertStatus($status);
     get('/admin/suppliers')->assertStatus($status);
+    get('/admin/docks')->assertStatus($status);
 })->with([
     ['guest', 302],
     ['admin', 200],
