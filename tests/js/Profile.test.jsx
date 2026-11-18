@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 
 vi.mock('../../resources/js/lib/api', () => ({
-    default: { get: vi.fn(), patch: vi.fn() },
+    default: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() },
     csrf: vi.fn(),
 }));
 
@@ -23,7 +23,11 @@ beforeEach(() => {
     api.patch.mockReset();
     csrf.mockReset();
     csrf.mockResolvedValue({});
-    api.get.mockResolvedValue({ data: { data: profile } });
+    api.get.mockImplementation((url) =>
+        url === '/vehicles'
+            ? Promise.resolve({ data: { data: [] } })
+            : Promise.resolve({ data: { data: profile } })
+    );
 });
 
 async function renderProfile() {

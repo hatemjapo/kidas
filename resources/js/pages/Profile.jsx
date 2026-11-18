@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import VehicleList from '../components/VehicleList';
 import api, { csrf } from '../lib/api';
 
 const fields = [
@@ -135,6 +136,8 @@ export default function Profile() {
                     {submitting ? 'Saving…' : 'Save'}
                 </button>
             </form>
+
+            <VehicleList />
         </div>
     );
 }
