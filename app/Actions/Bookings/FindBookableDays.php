@@ -7,6 +7,7 @@ use App\Data\Slot;
 use App\Enums\DockUsage;
 use App\Enums\Shift;
 use App\Models\CalendarDay;
+use App\Models\User;
 use App\Support\SlotGrid;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -17,14 +18,15 @@ class FindBookableDays
     public function __construct(
         private readonly DurationForPallets $durationForPallets,
         private readonly SlotGrid $slotGrid,
+        private readonly LeadTime $leadTime,
     ) {}
 
     /**
      * @return list<BookableDay>
      */
-    public function getNextBookableDays(DockUsage $usage, int $pallets, ?CarbonInterface $after = null): array
+    public function getNextBookableDaysForUser(User $user, DockUsage $usage, int $pallets, ?CarbonInterface $after = null): array
     {
-        $notBefore = $this->getEarliestStart();
+        $notBefore = $this->leadTime->getEarliestStartForUser($user);
 
         return $this->collectBookableDays(
             CalendarDay::getBookableDaysFrom($notBefore, $this->toImmutableDate($after)),
@@ -37,9 +39,9 @@ class FindBookableDays
     /**
      * @return list<BookableDay>
      */
-    public function getPreviousBookableDays(DockUsage $usage, int $pallets, CarbonInterface $before): array
+    public function getPreviousBookableDaysForUser(User $user, DockUsage $usage, int $pallets, CarbonInterface $before): array
     {
-        $notBefore = $this->getEarliestStart();
+        $notBefore = $this->leadTime->getEarliestStartForUser($user);
 
         $days = $this->collectBookableDays(
             CalendarDay::getBookableDaysBefore($notBefore, CarbonImmutable::parse($before->toDateString())),
@@ -102,11 +104,6 @@ class FindBookableDays
         }
 
         return false;
-    }
-
-    private function getEarliestStart(): CarbonImmutable
-    {
-        return CarbonImmutable::now()->addHours((int) config('booking.lead_time_hours'));
     }
 
     private function toImmutableDate(?CarbonInterface $date): ?CarbonImmutable

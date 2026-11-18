@@ -96,6 +96,24 @@ test('the warehouse timeline belongs to staff and admins', function (string $rol
     ['approved supplier', 403],
 ]);
 
+test('the slots and the admin booking are open to whoever books', function (string $role, int $slots, int $adminBooking) {
+    $user = actor($role);
+
+    if ($user !== null) {
+        actingAs($user);
+    }
+
+    getJson('/api/v1/slots?type=inbound&pallets=24')->assertStatus($slots);
+    getJson('/api/v1/suppliers')->assertStatus($adminBooking);
+    getJson('/api/v1/suppliers/1/vehicles')->assertStatus($adminBooking === 200 ? 404 : $adminBooking);
+    postJson('/api/v1/admin/bookings')->assertStatus($adminBooking === 200 ? 422 : $adminBooking);
+})->with([
+    ['guest', 401, 401],
+    ['admin', 200, 200],
+    ['staff', 403, 403],
+    ['approved supplier', 200, 403],
+]);
+
 test('the profile belongs to suppliers alone', function (string $role, int $status) {
     $user = actor($role);
 
@@ -105,7 +123,6 @@ test('the profile belongs to suppliers alone', function (string $role, int $stat
 
     getJson('/api/v1/profile')->assertStatus($status);
     getJson('/api/v1/vehicles')->assertStatus($status);
-    getJson('/api/v1/slots?type=inbound&pallets=24')->assertStatus($status);
     postJson('/api/v1/bookings')->assertStatus($status === 200 ? 422 : $status);
     getJson('/api/v1/bookings')->assertStatus($status);
     patchJson('/api/v1/bookings/1', ['pallets' => 10])->assertStatus($status === 200 ? 404 : $status);

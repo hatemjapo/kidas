@@ -18,6 +18,7 @@ class RescheduleBooking
     public function __construct(
         private readonly DurationForPallets $durationForPallets,
         private readonly PlanSlot $planSlot,
+        private readonly LeadTime $leadTime,
         private readonly LogBookingEvent $logBookingEvent,
         private readonly BookingChangeGuard $bookingChangeGuard,
     ) {}
@@ -40,6 +41,7 @@ class RescheduleBooking
             $booking->type,
             $wantedStart,
             $this->durationForPallets->getMinutesForPallets($wantedPallets),
+            $this->leadTime->getEarliestStartForUser($user),
         );
 
         return DB::transaction(

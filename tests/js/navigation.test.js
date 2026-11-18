@@ -2,7 +2,7 @@ import { navigationFor } from '../../resources/js/navigation';
 
 test('gives an admin every area', () => {
     expect(navigationFor('admin').map((item) => item.label))
-        .toEqual(['Dashboard', 'Dock schedule', 'Bookings']);
+        .toEqual(['Dashboard', 'Dock schedule', 'Book for a supplier', 'Bookings']);
 });
 
 test('gives warehouse staff the dock schedule', () => {

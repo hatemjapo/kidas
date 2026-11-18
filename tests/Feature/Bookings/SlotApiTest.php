@@ -148,8 +148,18 @@ test('insists on a sound question', function (string $query, string $field) {
     'both directions at once' => ['type=inbound&pallets=24&after=2027-06-02&before=2027-06-09', 'after'],
 ]);
 
-test('keeps the other roles out of the slots', function (string $state) {
-    actingAs(User::factory()->{$state}()->create());
+test('keeps the warehouse out of the slots', function () {
+    actingAs(User::factory()->staff()->create());
 
     getJson('/api/v1/slots?type=inbound&pallets=24')->assertForbidden();
-})->with(['admin', 'staff']);
+});
+
+test('lets the admin look at the slots, because the admin books too', function () {
+    openDay('2027-06-02');
+
+    actingAs(User::factory()->admin()->create());
+
+    getJson('/api/v1/slots?type=inbound&pallets=24')
+        ->assertOk()
+        ->assertJsonCount(1, 'data');
+});

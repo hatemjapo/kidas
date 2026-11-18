@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\SupplierStatus;
 use Database\Factories\SupplierFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,29 @@ class Supplier extends Model
             'status' => SupplierStatus::class,
             'approved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return Collection<int, self>
+     */
+    public static function getApprovedSuppliers(): Collection
+    {
+        return self::query()
+            ->where('status', SupplierStatus::Approved)
+            ->orderBy('company_name')
+            ->get();
+    }
+
+    public static function getApprovedSupplier(int $supplierId): self
+    {
+        return self::query()
+            ->where('status', SupplierStatus::Approved)
+            ->findOrFail($supplierId);
+    }
+
+    public function getPlateOfVehicle(int $vehicleId): string
+    {
+        return $this->vehicles()->findOrFail($vehicleId)->license_plate;
     }
 
     /**

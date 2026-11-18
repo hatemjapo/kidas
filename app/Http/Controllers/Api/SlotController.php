@@ -8,6 +8,7 @@ use App\Enums\DockUsage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\SlotQueryRequest;
 use App\Http\Resources\BookableDayResource;
+use App\Models\User;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SlotController extends Controller
@@ -22,9 +23,12 @@ class SlotController extends Controller
 
         $before = $request->date('before');
 
+        $user = $request->user();
+        assert($user instanceof User);
+
         $days = $before === null
-            ? $findBookableDays->getNextBookableDays($usage, $pallets, $request->date('after'))
-            : $findBookableDays->getPreviousBookableDays($usage, $pallets, $before);
+            ? $findBookableDays->getNextBookableDaysForUser($user, $usage, $pallets, $request->date('after'))
+            : $findBookableDays->getPreviousBookableDaysForUser($user, $usage, $pallets, $before);
 
         return BookableDayResource::collection($days)->additional([
             'meta' => [

@@ -7,8 +7,13 @@ vi.mock('../../resources/js/lib/api', () => ({
     csrf: vi.fn(),
 }));
 
+vi.mock('../../resources/js/auth/AuthContext', () => ({
+    useAuth: vi.fn(),
+}));
+
 const api = (await import('../../resources/js/lib/api')).default;
 const { csrf } = await import('../../resources/js/lib/api');
+const { useAuth } = await import('../../resources/js/auth/AuthContext');
 const { default: Book } = await import('../../resources/js/pages/Book');
 
 const slot = { starts_at: '2027-06-02T04:00:00Z', ends_at: '2027-06-02T04:45:00Z', shift: 'early' };
@@ -17,17 +22,31 @@ const days = [{ date: '2027-06-02', slots: [slot] }];
 
 const vehicles = [{ id: 3, license_plate: 'HHAB1234' }];
 
+const suppliers = [{ id: 4, company_name: 'Nordfracht GmbH' }];
+
 beforeEach(() => {
     api.get.mockReset();
     api.post.mockReset();
     csrf.mockReset();
     csrf.mockResolvedValue({});
 
-    api.get.mockImplementation((url) =>
-        url.startsWith('/vehicles')
-            ? Promise.resolve({ data: { data: vehicles } })
-            : Promise.resolve({ data: { data: days, meta: { duration_minutes: 45 } } })
-    );
+    useAuth.mockReturnValue({ role: 'supplier' });
+
+    api.get.mockImplementation((url) => {
+        if (url.startsWith('/suppliers') && url.endsWith('/vehicles')) {
+            return Promise.resolve({ data: { data: vehicles } });
+        }
+
+        if (url.startsWith('/suppliers')) {
+            return Promise.resolve({ data: { data: suppliers } });
+        }
+
+        if (url.startsWith('/vehicles')) {
+            return Promise.resolve({ data: { data: vehicles } });
+        }
+
+        return Promise.resolve({ data: { data: days, meta: { duration_minutes: 45 } } });
+    });
 });
 
 function renderBook() {
@@ -172,4 +191,89 @@ test('goes back to the slots on request', async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pick another slot' }));
 
     expect(await screen.findByRole('button', { name: '06:00' })).toBeInTheDocument();
+});
+
+function renderAsAdmin() {
+    useAuth.mockReturnValue({ role: 'admin' });
+
+    render(
+        <MemoryRouter>
+            <Book />
+        </MemoryRouter>
+    );
+}
+
+test('leaves the supplier out of a supplier booking', async () => {
+    renderBook();
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/vehicles'));
+
+    expect(screen.queryByLabelText('Supplier')).not.toBeInTheDocument();
+});
+
+test('asks the admin whom the slot is for', async () => {
+    renderAsAdmin();
+
+    expect(await screen.findByRole('option', { name: 'Nordfracht GmbH' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeDisabled();
+});
+
+test('loads the plates of the chosen supplier', async () => {
+    renderAsAdmin();
+
+    fireEvent.change(await screen.findByLabelText('Supplier'), { target: { value: '4' } });
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/suppliers/4/vehicles'));
+
+    expect(api.get).not.toHaveBeenCalledWith('/vehicles');
+    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeEnabled();
+});
+
+test('books for the chosen supplier', async () => {
+    api.post.mockResolvedValue({
+        data: { data: { id: 9, dock_number: 1, starts_at: slot.starts_at, ends_at: slot.ends_at, pallets: 10, license_plate: 'HHAB1234' } },
+    });
+
+    renderAsAdmin();
+
+    fireEvent.change(await screen.findByLabelText('Supplier'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+
+    fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
+    fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
+    fireEvent.change(await screen.findByLabelText('License plate'), { target: { value: 'HHAB1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
+
+    await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith('/admin/bookings', {
+            supplier_id: 4,
+            type: 'inbound',
+            pallets: 10,
+            starts_at: slot.starts_at,
+            order_number: 'PO-4711',
+            driver_phone: '+49 170 1',
+            vehicle_id: null,
+            license_plate: 'HHAB1234',
+        })
+    );
+});
+
+test('shows that a supplier is missing', async () => {
+    api.post.mockRejectedValue({
+        response: { status: 422, data: { errors: { supplier_id: ['This supplier is not approved.'] } } },
+    });
+
+    renderAsAdmin();
+
+    fireEvent.change(await screen.findByLabelText('Supplier'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+
+    fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
+    fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
+    fireEvent.change(await screen.findByLabelText('License plate'), { target: { value: 'HHAB1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
+
+    expect(await screen.findByText('This supplier is not approved.')).toBeInTheDocument();
 });
