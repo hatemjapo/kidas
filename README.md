@@ -109,6 +109,8 @@ The day is split into an early and a late shift, 06:00–14:00 and 14:00–18:00
 
 Days are defined one by one, not as a weekly pattern. A month calendar under `/admin/days` marks every day with a green or red dot — released or not — and opening a day shows an editor: the usage of each dock in each shift, the opening times and the shift times of that day. Everything is prefilled from the defaults, every dock starts on inbound, and saving writes the whole day in one go. Once a day is saved, it keeps its own times: a later change to the defaults does not reach it. Days in the past cannot be changed.
 
+How long a booking blocks a dock follows from the number of pallets. Seven tiers cover every load up to the maximum of 70 — up to 10, 20, and so on — and an admin picks the blocked time for each tier from a list that runs in quarter hours up to three hours. The tiers themselves are fixed by the migration, so every pallet count from 1 to 70 always finds its tier. `config/booking.php` holds the maximum.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -130,4 +132,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, and **E2-S4** – the day editor. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, and **E2-S5** – the pallet durations. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

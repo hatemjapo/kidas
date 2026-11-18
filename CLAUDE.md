@@ -22,6 +22,8 @@ Filament (/admin, nur intern) · PostgreSQL · Pest · Pint · Larastan
 - Vor Abschluss: ./vendor/bin/pint, ./vendor/bin/phpstan, ./vendor/bin/pest – alles grün.
 - Unsicherheit offen benennen statt raten.
 - Keine Kommentare im code
+- Methodennamen beschreiben, was die Methode tut und womit sie es tut – die Eingabe gehört in den
+  Namen: `getMinutesForPallets(int $pallets)`, nicht `minutesFor(int $pallets)`.
 - nichts committen, es sei denn es wurde befohlen
 - commit messages immer auf englisch
 - branch namen immer auf englisch
