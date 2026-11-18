@@ -36,6 +36,19 @@ class Supplier extends Model
     }
 
     /**
+     * @return HasMany<Booking, $this>
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function hasVehicleWithPlate(string $licensePlate): bool
+    {
+        return $this->vehicles()->where('license_plate', Vehicle::normalizePlate($licensePlate))->exists();
+    }
+
+    /**
      * @return HasMany<Vehicle, $this>
      */
     public function vehicles(): HasMany

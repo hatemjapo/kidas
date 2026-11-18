@@ -83,6 +83,7 @@ test('the profile belongs to suppliers alone', function (string $role, int $stat
     getJson('/api/v1/profile')->assertStatus($status);
     getJson('/api/v1/vehicles')->assertStatus($status);
     getJson('/api/v1/slots?type=inbound&pallets=24')->assertStatus($status);
+    postJson('/api/v1/bookings')->assertStatus($status === 200 ? 422 : $status);
 })->with([
     ['guest', 401],
     ['admin', 403],

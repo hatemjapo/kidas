@@ -79,6 +79,31 @@ class FindBookableDays
         return $bookableDays;
     }
 
+    /**
+     * @param  list<int>  $dockIds
+     * @param  array<int, list<array{0: CarbonImmutable, 1: CarbonImmutable}>>  $intervalsByDock
+     */
+    private function hasFreeDock(array $dockIds, array $intervalsByDock, CarbonImmutable $startsAt, CarbonImmutable $endsAt): bool
+    {
+        foreach ($dockIds as $dockId) {
+            $taken = false;
+
+            foreach ($intervalsByDock[$dockId] ?? [] as [$bookedFrom, $bookedUntil]) {
+                if ($bookedFrom->lessThan($endsAt) && $bookedUntil->greaterThan($startsAt)) {
+                    $taken = true;
+
+                    break;
+                }
+            }
+
+            if (! $taken) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function getEarliestStart(): CarbonImmutable
     {
         return CarbonImmutable::now()->addHours((int) config('booking.lead_time_hours'));
@@ -95,16 +120,25 @@ class FindBookableDays
     private function getSlotsForDay(CalendarDay $day, DockUsage $usage, int $durationMinutes, CarbonImmutable $notBefore): array
     {
         $slots = [];
+        $intervalsByDock = $day->getBlockingIntervalsByDock();
 
         foreach (Shift::cases() as $shift) {
-            if (! $day->hasActiveDockForShiftAndUsage($shift, $usage)) {
+            $dockIds = $day->getActiveDockIdsForShiftAndUsage($shift, $usage);
+
+            if ($dockIds === []) {
                 continue;
             }
 
             [$windowStart, $windowEnd] = $day->getWindowForShift($shift);
 
             foreach ($this->slotGrid->getStartTimesInWindow($windowStart, $windowEnd, $durationMinutes, $notBefore) as $startsAt) {
-                $slots[] = new Slot($startsAt, $startsAt->addMinutes($durationMinutes), $shift);
+                $endsAt = $startsAt->addMinutes($durationMinutes);
+
+                if (! $this->hasFreeDock($dockIds, $intervalsByDock, $startsAt, $endsAt)) {
+                    continue;
+                }
+
+                $slots[] = new Slot($startsAt, $endsAt, $shift);
             }
         }
 
