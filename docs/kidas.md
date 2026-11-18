@@ -141,19 +141,18 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 
 ### E5 – Supplier Booking (Core)
 - **E5-S1 (M) Slot calculation (service)** – Input: date, type, pallets → duration from pallet rules → available start times on a 15-minute grid across all matching docks. *AC (unit tests!):* respects opening hours ∩ shift times, no slot spanning a shift change, only released future days, back-to-back 9:30/9:30 allowed, DST transitions handled correctly.
-- **E5-S2 (M) Slot suggestion API** – `GET /api/v1/slots?date=&pallets=` returns available start times (without dock number).
-- **E5-S3 (M) Create booking** – Order number, pallets, vehicle (select or new), driver phone, start time → dock assignment under lock (ADR-3/5). *AC:* concurrency test "two bookings for the last free slot" → exactly one succeeds, the other gets 409.
+- **E5-S2 (M) Slot suggestion API** – `GET /api/v1/slots?type=&pallets=` returns up to five bookable days with their start times (without dock number); `after` and `before` page forward and back. *AC:* no bookable day answers with an empty list, not an error.
+- **E5-S3 (M) Create booking** – Order number, pallets, vehicle (select or new), driver phone, start time → dock assignment under lock (ADR-3/5); from here on the slot search stops offering a start time once no dock is free for it, and drops a day that has none left. *AC:* concurrency test "two bookings for the last free slot" → exactly one succeeds, the other gets 409.
 - **E5-S4 (M) My bookings** – List + detail with status; own bookings only (foreign ID → 404).
 - **E5-S5 (M) Reschedule** – New time/pallets; same rules as a new booking; only up to 3 h before the slot.
 - **E5-S6 (M) Cancel** – Only up to 3 h before the slot; reason optional.
-- **E5-S7 (M) Booking flow in the frontend** – React: date + pallets → pick slot → confirm details → confirmation page.
+- **E5-S7 (M) Booking flow in the frontend** – React: type + pallets → pick one of the suggested slots → confirm details → confirmation page; moving and cancelling a booking from its detail view.
 
 ### E6 – Warehouse View & Handling (Staff)
-- **E6-S1 (M) Daily dock timeline** – Docks as rows, time as columns, colored by type and status; switch between days.
-- **E6-S2 (M) Book pickup** – Carrier, license plate, phone, pallets → slot on an outbound dock.
-- **E6-S3 (M) Register arrival** – Enter license plate; on mismatch the status stays `arrived` and is flagged "plate mismatch"; staff confirms after verifying with the company.
-- **E6-S4 (M) Start handling / release dock** – Handling can only start once the plate is verified; "dock free" sets the status to `completed`. *AC:* invalid transitions → 422.
-- **E6-S5 (M) No-show** – Can be marked once the slot has passed.
+- **E6-S1 (M) Daily dock timeline** – Docks as columns, time as rows, colored by type and status; switch between days.
+- **E6-S2 (M) Register arrival** – Enter license plate; on mismatch the status stays `arrived` and is flagged "plate mismatch"; staff confirms after verifying with the company.
+- **E6-S3 (M) Start handling / release dock** – Handling can only start once the plate is verified; "dock free" sets the status to `completed`. *AC:* invalid transitions → 422.
+- **E6-S4 (M) No-show** – Can be marked once the slot has passed.
 
 ### E7 – Admin Actions & Notifications
 - **E7-S1 (M) Admin books** – Inbound or outbound for any supplier, without the 3 h restriction.
@@ -176,6 +175,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 ### E10 – Adjustments
 - **E10-S1 (N) Remove the skeleton seeder** – `DatabaseSeeder` still creates the example user from the Laravel skeleton. *AC:* `db:seed` creates nothing that the application does not need.
 - **E10-S2 (N) Queries into the models** – the Filament day page and the day actions build their own queries; the "active docks" one exists twice. `Dock` and `CalendarDay` get finders instead (`getActiveDocks`, `getReleasedDatesInMonth`). *AC:* no query inside a Filament page, and every query that carries a meaning exists once.
+- **E10-S3 (N) Default driver phone** – the supplier keeps a driver phone number in their profile; booking prefills it from there, and the supplier can overwrite it for a single booking when another driver comes or the number differs. *AC:* a booking keeps the number it was made with, even when the profile changes afterwards.
 
 ### Future ideas
 Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.

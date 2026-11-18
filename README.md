@@ -75,6 +75,19 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
 | `GET` | `/api/v1/profile` | the supplier's own profile |
 | `PATCH` | `/api/v1/profile` | changes company, company phone and contact name |
+| `GET` | `/api/v1/slots` | the days and start times a booking fits into |
+| `GET` | `/api/v1/bookings` | the supplier's own bookings, page by page |
+| `POST` | `/api/v1/bookings` | books one of those start times |
+| `GET` | `/api/v1/bookings/{id}` | one booking with its history, `404` for a foreign one |
+| `PATCH` | `/api/v1/bookings/{id}` | moves a booking to another time or pallet count |
+| `POST` | `/api/v1/bookings/{id}/cancel` | cancels a booking, reason optional |
+| `GET` | `/api/v1/schedule?date=` | the warehouse timeline of one day |
+| `POST` | `/api/v1/bookings/{id}/arrival` | the warehouse registers an arrival |
+| `PATCH` | `/api/v1/bookings/{id}/arrival` | the warehouse corrects the plate that was typed |
+| `POST` | `/api/v1/bookings/{id}/handling` | the warehouse starts the handling |
+| `POST` | `/api/v1/bookings/{id}/completion` | the warehouse reports the dock free |
+| `POST` | `/api/v1/bookings/{id}/no-show` | the warehouse marks that nobody turned up |
+| `POST` | `/api/v1/bookings/{id}/plate-verification` | the warehouse confirms a plate that differed |
 | `GET` | `/api/v1/vehicles` | the supplier's saved license plates |
 | `POST` | `/api/v1/vehicles` | saves a license plate |
 | `DELETE` | `/api/v1/vehicles/{id}` | removes one, `404` for a foreign one |
@@ -120,6 +133,55 @@ A supplier keeps their own profile at `/profile` in the app: company, company ph
 
 The same page keeps the supplier's license plates. Whatever is typed is reduced to letters and digits in upper case, so `hh-ab 1234` is stored as `HHAB1234` and cannot be saved twice in another spelling. Two suppliers may well keep the same lorry, so the plates are unique per supplier rather than globally. Normalizing happens on the model, not only in the request, because the warehouse will compare a plate against a booking later.
 
+### Finding a slot
+
+A supplier says what they want — inbound or outbound — and how many pallets they carry; the system answers with the days on which that fits and the start times of each. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
+
+A start time survives four filters: it lies inside the opening hours **and** inside a shift, the whole booking fits before the shift changes, at least one active dock carries that usage in that shift, and the start is at least three hours away. The grid runs in quarter hours, so a booking ending at 9:30 and one starting at 9:30 are both fine.
+
+The arithmetic runs on instants in UTC while opening hours are wall clock times in `Europe/Berlin`, which is what `config/booking.php` sets. That is why the clock change needs no special case: a window from 01:00 to 05:00 simply holds four fewer quarter hours on the morning the clocks jump forward, and four more when they fall back. `app/Support/SlotGrid.php` does that part without touching the database, so it is covered by unit tests.
+
+`GET /api/v1/slots?type=inbound&pallets=24` is how a supplier asks. The answer carries up to five days, each with its start times as instants in UTC, plus the duration that this load takes. `after` and `before` page forward and back from a date, and a page beyond the last day simply comes back empty rather than as an error. No dock number appears anywhere in the answer, because the dock is assigned when the booking is saved (ADR-5).
+
+### Booking one
+
+`POST /api/v1/bookings` takes the type, the pallets, a start time, an order number, a driver phone and either a saved vehicle or a new plate — which is then remembered for next time. The dock is chosen by the system: the lowest free one that carries this usage in that shift (ADR-5). The answer names it, so the driver knows where to go.
+
+Three layers keep a dock from being booked twice, each with its own job. The slot list leaves out a start time once no dock is free for it, which is fast but only advisory. Saving decides for real, inside a transaction that locks the docks in question. And a Postgres exclusion constraint is the last net for two requests arriving in the same instant:
+
+```sql
+EXCLUDE USING gist (dock_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&)
+WHERE (status IN ('booked', 'arrived', 'in_progress', 'completed'))
+```
+
+The half open range is why a booking ending at 9:30 and one starting at 9:30 are both fine, and the condition is why a cancelled booking stops holding its dock. Whichever layer catches it, the supplier gets `409` and the message that the slot has just been taken, so the app can refresh the list. A start time that was never bookable — outside the opening hours, across a shift change, on an unreleased day, or on a day whose docks all serve the other direction — answers `422` instead.
+
+Every booking starts on the status `booked` and writes its first entry in `booking_events`; the transitions themselves arrive with the warehouse view (ADR-4).
+
+`/bookings` in the app lists what a supplier has booked, the latest first and twenty to a page, and opening one shows its details together with the history from `booking_events` — who moved it to which status, and when. A booking of another supplier answers `404` rather than `403`, because the lookup runs through the supplier's own bookings and foreign ones are not reachable at all.
+
+A booking can be moved to another time, another day or another pallet count, which changes how long it blocks a dock. The new slot has to pass the same rules as a new booking, and the dock is assigned again, so it may change. Moving is only allowed while the booking is merely `booked` and up to three hours before its current slot — `change_deadline_hours` in `config/booking.php`, the same deadline the plan sets for cancelling. Too late or the wrong state answers `403`, an impossible new time `422`, and a time where no dock is free `409`. The move itself goes into the history as a note, so it stays visible that the slot was not the original one.
+
+Cancelling follows the same deadline and the same states, and it is a `POST` to `/cancel` rather than a `DELETE`, because nothing is deleted: the booking keeps its row with the status `cancelled`, the time of the cancellation and an optional reason, and it stays in the supplier's list. The dock becomes free again by itself — `cancelled` is not one of the states that hold a dock, so neither the slot search nor the database constraint counts it any more.
+
+### The supplier's side in the app
+
+`/book` walks a supplier through it: say whether you deliver or pick up and how many pallets you carry, look at the suggested days with their start times, pick one, add order number, driver phone and a vehicle, and the confirmation names the dock to drive to. If somebody took the slot in the meantime, the answer is the message from the API and the free slots are reloaded — the supplier picks again rather than being moved somewhere automatically.
+
+The detail view of a booking carries the two changes a supplier may make: moving it, which opens the same slot picker and allows a new pallet count, and cancelling it with an optional reason. Both buttons only appear while the booking is merely `booked`, and when the API refuses — too late, or the slot taken — its message is what the page shows.
+
+### The warehouse side in the app
+
+`/schedule` is the day of the warehouse: the ten docks as columns, the opening hours of that day running down the left in quarter-hour rows, and every booking as a block in its dock's column. Blocks are tinted by what they are — a delivery or a pickup — and marked by where they stand: being handled, done, or nobody showed up. Cancelled bookings are left out, because the timeline shows what is coming rather than what was called off. Docks that are switched off keep their column, greyed out, so it stays visible that dock 7 is out of service.
+
+Arrows move one day back and forth, and a day that was never released is shown with the opening hours of its weekday and empty columns rather than an error. The arithmetic that turns an instant into a row lives in `resources/js/lib/timeline.js` and is covered by unit tests. Staff and admins may open it; a supplier gets `403`.
+
+Clicking a block opens the booking in a dialog: who is expected, with which plate, and a field for the plate that actually arrived. Registering it sets the booking to `arrived` and keeps the plate that came. If it differs from the booking — compared in normalized form, so `hh-ab 1234` and `HHAB1234` are the same lorry — the booking is flagged, the timeline marks it, and the warehouse has to confirm the plate after checking with the company before anything else happens. The flag stays on the booking afterwards as a record; what was said goes into the history. A plate can also simply have been mistyped, so it stays editable while the lorry waits: correcting it recomputes the flag, and a confirmation given for the earlier plate is withdrawn, because it was about a different lorry. The time of arrival is not touched by a correction.
+
+From there the dialog carries the lorry through: handling starts, and when the dock is free again the booking is done. Handling cannot start while a plate is still in question — that is the point of the flag — and the two steps only exist in the order they happen in the yard. Which step follows which is the enum's business: `BookingStatus::canTransitionTo()` holds the whole map, and anything that is not on it is refused with `422`, so a booking can never be completed without having been handled, nor handled twice. Both steps keep their own time, and both are written into the history. Releasing the dock is asked once more before it is sent, because it ends the booking and a misplaced click should not do that.
+
+When nobody turns up at all, the booking is marked as a no-show — but only once the slot is over, because until then the lorry may still be on its way; the button appears at that moment and is asked back like the release. A no-show frees the slot, so the dock can be given to somebody else, and only a booking that was still awaited can become one: a lorry that has already been at the dock cannot have been absent. The warehouse books nothing: it sees what is coming and records what arrives.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -141,4 +203,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, and **E4-S2** – the supplier's vehicles. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, **E6-S1** – the warehouse timeline, **E6-S2** – registering an arrival, **E6-S3** – handling a lorry and releasing the dock, and **E6-S4** – the no-show. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

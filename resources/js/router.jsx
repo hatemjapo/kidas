@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router';
 import RequireAuth from './auth/RequireAuth';
 import RequireRole from './auth/RequireRole';
 import AppLayout from './layouts/AppLayout';
+import Book from './pages/Book';
 import Bookings from './pages/Bookings';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -29,6 +30,7 @@ export default function Router() {
                     </Route>
 
                     <Route element={<RequireRole allow={['supplier']} />}>
+                        <Route path="/book" element={<Book />} />
                         <Route path="/profile" element={<Profile />} />
                     </Route>
 
