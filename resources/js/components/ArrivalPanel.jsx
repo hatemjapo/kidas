@@ -6,6 +6,7 @@ import StatusBadge from './StatusBadge';
 export default function ArrivalPanel({ booking, onDone, onClose }) {
     const [plate, setPlate] = useState(booking.arrived_plate ?? '');
     const [note, setNote] = useState('');
+    const [releasing, setReleasing] = useState(false);
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [working, setWorking] = useState(false);
@@ -26,8 +27,8 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
 
             onDone(response.data.data ?? response.data);
         } catch (failure) {
-            if (failure.response?.status === 422) {
-                setErrors(failure.response.data.errors ?? {});
+            if (failure.response?.status === 422 && failure.response.data?.errors) {
+                setErrors(failure.response.data.errors);
             } else {
                 setMessage(failure.response?.data?.message ?? 'This could not be saved.');
             }
@@ -150,6 +151,70 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                         Confirm the plate
                     </button>
                 </form>
+            )}
+
+            {booking.status === 'arrived' && (
+                <button
+                    type="button"
+                    disabled={working || (booking.plate_mismatch && ! booking.plate_verified)}
+                    onClick={() => send('handling', {})}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                >
+                    Start the handling
+                </button>
+            )}
+
+            {booking.started_at !== null && booking.started_at !== undefined && (
+                <p className="text-sm text-slate-600">
+                    Handling started at {formatTime(booking.started_at)}.
+                </p>
+            )}
+
+            {booking.status === 'in_progress' && ! releasing && (
+                <button
+                    type="button"
+                    disabled={working}
+                    onClick={() => setReleasing(true)}
+                    className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                >
+                    The dock is free
+                </button>
+            )}
+
+            {booking.status === 'in_progress' && releasing && (
+                <div className="space-y-3 rounded-md border border-emerald-300 bg-emerald-50 p-3">
+                    <p className="text-sm text-emerald-900">
+                        Release dock {booking.dock_number} and finish this booking? This cannot be undone.
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            disabled={working}
+                            onClick={() => {
+                                setReleasing(false);
+                                send('completion', {});
+                            }}
+                            className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                            Yes, the dock is free
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setReleasing(false)}
+                            className="text-sm font-medium text-slate-600 hover:underline"
+                        >
+                            Not yet
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {booking.completed_at !== null && booking.completed_at !== undefined && (
+                <p className="text-sm text-slate-600">
+                    Dock released at {formatTime(booking.completed_at)}.
+                </p>
             )}
 
             {booking.plate_mismatch && booking.plate_verified && (
