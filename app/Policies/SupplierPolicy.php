@@ -18,6 +18,11 @@ class SupplierPolicy
         return $user->role === UserRole::Admin;
     }
 
+    public function update(User $user, Supplier $supplier): bool
+    {
+        return $user->role === UserRole::Admin || $supplier->user_id === $user->id;
+    }
+
     public function decide(User $user, Supplier $supplier): bool
     {
         return $user->role === UserRole::Admin;

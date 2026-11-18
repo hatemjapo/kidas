@@ -73,6 +73,21 @@ test('logging out is possible for every signed in role', function (string $role,
     ['approved supplier', 204],
 ]);
 
+test('the profile belongs to suppliers alone', function (string $role, int $status) {
+    $user = actor($role);
+
+    if ($user !== null) {
+        actingAs($user);
+    }
+
+    getJson('/api/v1/profile')->assertStatus($status);
+})->with([
+    ['guest', 401],
+    ['admin', 403],
+    ['staff', 403],
+    ['approved supplier', 200],
+]);
+
 test('registration and login stay open to everyone', function (string $role) {
     $user = actor($role);
 
