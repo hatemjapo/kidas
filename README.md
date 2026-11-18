@@ -75,6 +75,9 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
 | `GET` | `/api/v1/profile` | the supplier's own profile |
 | `PATCH` | `/api/v1/profile` | changes company, company phone and contact name |
+| `GET` | `/api/v1/vehicles` | the supplier's saved license plates |
+| `POST` | `/api/v1/vehicles` | saves a license plate |
+| `DELETE` | `/api/v1/vehicles/{id}` | removes one, `404` for a foreign one |
 
 Wrong credentials answer with `422` and a field error, so the login form can show it. Both endpoints allow six attempts per minute and IP address.
 
@@ -115,6 +118,8 @@ How long a booking blocks a dock follows from the number of pallets. Seven tiers
 
 A supplier keeps their own profile at `/profile` in the app: company, company phone and contact name. The email address stays as it is, because changing a sign-in address properly needs a confirmation on both the old and the new one. Both profile routes carry `role:supplier`, so staff and admins are answered with `403` — an admin works in the panel.
 
+The same page keeps the supplier's license plates. Whatever is typed is reduced to letters and digits in upper case, so `hh-ab 1234` is stored as `HHAB1234` and cannot be saved twice in another spelling. Two suppliers may well keep the same lorry, so the plates are unique per supplier rather than globally. Normalizing happens on the model, not only in the request, because the warehouse will compare a plate against a booking later.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -136,4 +141,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, and **E4-S1** – the supplier profile. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, and **E4-S2** – the supplier's vehicles. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
