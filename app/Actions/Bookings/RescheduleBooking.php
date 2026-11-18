@@ -12,7 +12,6 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class RescheduleBooking
 {
@@ -20,6 +19,7 @@ class RescheduleBooking
         private readonly DurationForPallets $durationForPallets,
         private readonly PlanSlot $planSlot,
         private readonly LogBookingEvent $logBookingEvent,
+        private readonly BookingChangeGuard $bookingChangeGuard,
     ) {}
 
     public function rescheduleBookingForSupplier(
@@ -28,7 +28,7 @@ class RescheduleBooking
         ?CarbonImmutable $startsAt,
         ?int $pallets,
     ): Booking {
-        $this->denyAChangeThatComesTooLate($booking);
+        $this->bookingChangeGuard->denyAChangeThatComesTooLate($booking, 'moved');
 
         $wantedStart = $startsAt ?? $this->getStartOf($booking);
         $wantedPallets = $pallets ?? $booking->pallets;
@@ -79,19 +79,6 @@ class RescheduleBooking
             }
 
             throw $exception;
-        }
-    }
-
-    private function denyAChangeThatComesTooLate(Booking $booking): void
-    {
-        if ($booking->status !== BookingStatus::Booked) {
-            throw new AccessDeniedHttpException('A booking in this state can no longer be moved.');
-        }
-
-        $deadline = $this->getStartOf($booking)->subHours((int) config('booking.change_deadline_hours'));
-
-        if (CarbonImmutable::now()->greaterThanOrEqualTo($deadline)) {
-            throw new AccessDeniedHttpException('A booking can only be moved up to three hours before its slot.');
         }
     }
 
