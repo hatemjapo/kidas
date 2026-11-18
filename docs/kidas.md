@@ -146,7 +146,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E5-S4 (M) My bookings** – List + detail with status; own bookings only (foreign ID → 404).
 - **E5-S5 (M) Reschedule** – New time/pallets; same rules as a new booking; only up to 3 h before the slot.
 - **E5-S6 (M) Cancel** – Only up to 3 h before the slot; reason optional.
-- **E5-S7 (M) Booking flow in the frontend** – React: date + pallets → pick slot → confirm details → confirmation page.
+- **E5-S7 (M) Booking flow in the frontend** – React: type + pallets → pick one of the suggested slots → confirm details → confirmation page; moving and cancelling a booking from its detail view.
 
 ### E6 – Warehouse View & Handling (Staff)
 - **E6-S1 (M) Daily dock timeline** – Docks as rows, time as columns, colored by type and status; switch between days.
@@ -176,6 +176,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 ### E10 – Adjustments
 - **E10-S1 (N) Remove the skeleton seeder** – `DatabaseSeeder` still creates the example user from the Laravel skeleton. *AC:* `db:seed` creates nothing that the application does not need.
 - **E10-S2 (N) Queries into the models** – the Filament day page and the day actions build their own queries; the "active docks" one exists twice. `Dock` and `CalendarDay` get finders instead (`getActiveDocks`, `getReleasedDatesInMonth`). *AC:* no query inside a Filament page, and every query that carries a meaning exists once.
+- **E10-S3 (N) Default driver phone** – the supplier keeps a driver phone number in their profile; booking prefills it from there, and the supplier can overwrite it for a single booking when another driver comes or the number differs. *AC:* a booking keeps the number it was made with, even when the profile changes afterwards.
 
 ### Future ideas
 Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.
