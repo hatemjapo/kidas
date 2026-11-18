@@ -361,3 +361,65 @@ test('shows why a step was refused', async () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('confirmed with the company');
 });
+
+const passed = { ...awaited, starts_at: '2020-06-02T10:00:00Z', ends_at: '2020-06-02T10:15:00Z' };
+
+test('offers the no-show only once the slot is over', () => {
+    const { rerender } = render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Nobody turned up' })).not.toBeInTheDocument();
+
+    rerender(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Nobody turned up' })).toBeInTheDocument();
+});
+
+test('asks before a no-show is marked', async () => {
+    api.post.mockResolvedValue({ data: { data: { ...passed, status: 'no_show' } } });
+
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(screen.getByText(/free for somebody else/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, nobody turned up' }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/bookings/7/no-show', {}));
+});
+
+test('lets the no-show question be waved away', () => {
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet' }));
+
+    expect(screen.getByRole('button', { name: 'Nobody turned up' })).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+});
+
+test('offers no no-show once the lorry is there', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...passed, status: 'arrived', arrived_plate: 'HHAB1234' }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Nobody turned up' })).not.toBeInTheDocument();
+});
+
+test('shows why a no-show was refused', async () => {
+    api.post.mockRejectedValue({
+        response: { status: 422, data: { message: 'The slot is not over yet.' } },
+    });
+
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, nobody turned up' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('not over yet');
+});
