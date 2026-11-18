@@ -230,3 +230,134 @@ test('shows the field error for a missing plate', async () => {
 
     expect(await screen.findByText('The license plate field is required.')).toBeInTheDocument();
 });
+
+const arrived = {
+    ...awaited,
+    status: 'arrived',
+    arrived_at: '2027-06-02T10:05:00Z',
+    arrived_plate: 'HHAB1234',
+    started_at: null,
+    completed_at: null,
+};
+
+test('starts the handling of a lorry that is waiting', async () => {
+    api.post.mockResolvedValue({ data: { data: { ...arrived, status: 'in_progress' } } });
+
+    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start the handling' }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/bookings/7/handling', {}));
+});
+
+test('does not let the handling start while the plate is in question', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...arrived, arrived_plate: 'HHZZ9999', plate_mismatch: true }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    expect(screen.getByRole('button', { name: 'Start the handling' })).toBeDisabled();
+});
+
+test('lets the handling start once the plate was confirmed', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...arrived, arrived_plate: 'HHZZ9999', plate_mismatch: true, plate_verified: true }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    expect(screen.getByRole('button', { name: 'Start the handling' })).toBeEnabled();
+});
+
+test('releases the dock when the handling is done', async () => {
+    api.post.mockResolvedValue({ data: { data: { ...arrived, status: 'completed' } } });
+
+    render(
+        <ArrivalPanel
+            booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    expect(screen.getByText(/Handling started at 12:10/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start the handling' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'The dock is free' }));
+
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, the dock is free' }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/bookings/7/completion', {}));
+});
+
+test('asks before the dock is released', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'The dock is free' }));
+
+    expect(screen.getByText(/Release dock 1 and finish this booking/)).toBeInTheDocument();
+});
+
+test('lets the question be waved away', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'The dock is free' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Not yet' }));
+
+    expect(screen.queryByText(/Release dock 1 and finish this booking/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'The dock is free' })).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+});
+
+test('shows a finished booking without any buttons', () => {
+    render(
+        <ArrivalPanel
+            booking={{
+                ...arrived,
+                status: 'completed',
+                started_at: '2027-06-02T10:10:00Z',
+                completed_at: '2027-06-02T10:40:00Z',
+            }}
+            onDone={vi.fn()}
+            onClose={vi.fn()}
+        />
+    );
+
+    expect(screen.getByText(/Dock released at 12:40/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'The dock is free' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('License plate that arrived')).not.toBeInTheDocument();
+});
+
+test('shows why a step was refused', async () => {
+    api.post.mockRejectedValue({
+        response: {
+            status: 422,
+            data: { message: 'The plate has to be confirmed with the company before handling starts.' },
+        },
+    });
+
+    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start the handling' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('confirmed with the company');
+});

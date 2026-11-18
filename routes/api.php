@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\HandlingController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SlotController;
@@ -35,6 +36,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/bookings/{booking}/plate-verification', [ArrivalController::class, 'verify'])
             ->whereNumber('booking')
             ->name('api.bookings.plate-verification');
+
+        Route::post('/bookings/{booking}/handling', [HandlingController::class, 'store'])
+            ->whereNumber('booking')
+            ->name('api.bookings.handling');
+
+        Route::post('/bookings/{booking}/completion', [HandlingController::class, 'complete'])
+            ->whereNumber('booking')
+            ->name('api.bookings.completion');
     });
 
     Route::middleware('role:supplier')->group(function (): void {

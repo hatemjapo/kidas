@@ -23,6 +23,24 @@ enum BookingStatus: string
         };
     }
 
+    public function canTransitionTo(self $next): bool
+    {
+        return in_array($next, $this->getNextStates(), true);
+    }
+
+    /**
+     * @return list<self>
+     */
+    public function getNextStates(): array
+    {
+        return match ($this) {
+            self::Booked => [self::Arrived, self::Cancelled, self::NoShow],
+            self::Arrived => [self::InProgress],
+            self::InProgress => [self::Completed],
+            self::Completed, self::Cancelled, self::NoShow => [],
+        };
+    }
+
     /**
      * The states the warehouse timeline shows: everything that still means a lorry.
      *

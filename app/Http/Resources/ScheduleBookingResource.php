@@ -33,6 +33,8 @@ class ScheduleBookingResource extends JsonResource
             'arrived_plate' => $this->arrived_plate,
             'plate_mismatch' => $this->plate_mismatch,
             'plate_verified' => $this->plate_verified_by !== null,
+            'started_at' => $this->started_at?->toIso8601ZuluString(),
+            'completed_at' => $this->completed_at?->toIso8601ZuluString(),
         ];
     }
 }
