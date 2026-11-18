@@ -82,6 +82,10 @@ test('the warehouse timeline belongs to staff and admins', function (string $rol
     }
 
     getJson('/api/v1/schedule?date=2027-06-02')->assertStatus($status);
+    postJson('/api/v1/bookings/1/arrival', ['license_plate' => 'HHAB1234'])
+        ->assertStatus($status === 200 ? 404 : $status);
+    patchJson('/api/v1/bookings/1/arrival', ['license_plate' => 'HHAB1234'])
+        ->assertStatus($status === 200 ? 404 : $status);
 })->with([
     ['guest', 401],
     ['admin', 200],

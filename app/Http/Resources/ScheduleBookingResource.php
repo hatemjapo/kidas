@@ -29,6 +29,10 @@ class ScheduleBookingResource extends JsonResource
             'company' => $this->supplier instanceof Supplier
                 ? $this->supplier->company_name
                 : $this->carrier_name,
+            'arrived_at' => $this->arrived_at?->toIso8601ZuluString(),
+            'arrived_plate' => $this->arrived_plate,
+            'plate_mismatch' => $this->plate_mismatch,
+            'plate_verified' => $this->plate_verified_by !== null,
         ];
     }
 }

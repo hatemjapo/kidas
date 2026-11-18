@@ -12,7 +12,7 @@ export function getBlockPosition(opensAt, closesAt, startsAt, endsAt) {
     const start = Math.max(0, Math.min(from, quarters));
     const end = Math.max(start, Math.min(until, quarters));
 
-    return { column: start + 1, span: Math.max(1, end - start) };
+    return { start, span: Math.max(1, end - start) };
 }
 
 export function getHourMarks(opensAt, closesAt) {
