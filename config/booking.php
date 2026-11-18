@@ -40,4 +40,6 @@ return [
 
     'days_per_page' => 5,
 
+    'bookings_per_page' => 20,
+
 ];

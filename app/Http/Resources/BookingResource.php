@@ -27,6 +27,12 @@ class BookingResource extends JsonResource
             'license_plate' => $this->license_plate,
             'driver_phone' => $this->driver_phone,
             'dock_number' => $this->dock->number,
+            'arrived_at' => $this->arrived_at?->toIso8601ZuluString(),
+            'arrived_plate' => $this->arrived_plate,
+            'plate_mismatch' => $this->plate_mismatch,
+            'cancelled_at' => $this->cancelled_at?->toIso8601ZuluString(),
+            'cancel_reason' => $this->cancel_reason,
+            'history' => BookingEventResource::collection($this->whenLoaded('events')),
         ];
     }
 }
