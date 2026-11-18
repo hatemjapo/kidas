@@ -1,30 +1,14 @@
 import { useEffect, useState } from 'react';
+import BookingDetail from '../components/BookingDetail';
+import StatusBadge from '../components/StatusBadge';
 import api from '../lib/api';
-import { formatDate, formatDateTime, formatTime } from '../lib/datetime';
-
-const statusClasses = {
-    booked: 'bg-slate-100 text-slate-700',
-    arrived: 'bg-amber-100 text-amber-800',
-    in_progress: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    no_show: 'bg-red-100 text-red-800',
-};
-
-function StatusBadge({ status }) {
-    return (
-        <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClasses[status] ?? 'bg-slate-100 text-slate-700'}`}
-        >
-            {status.replace('_', ' ')}
-        </span>
-    );
-}
+import { formatDate, formatTime } from '../lib/datetime';
 
 export default function Bookings() {
     const [bookings, setBookings] = useState([]);
     const [meta, setMeta] = useState(null);
     const [page, setPage] = useState(1);
+    const [reload, setReload] = useState(0);
     const [selected, setSelected] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -55,7 +39,7 @@ export default function Bookings() {
         return () => {
             active = false;
         };
-    }, [page]);
+    }, [page, reload]);
 
     async function openBooking(booking) {
         setError(null);
@@ -75,65 +59,14 @@ export default function Bookings() {
 
     if (selected !== null) {
         return (
-            <div className="max-w-2xl space-y-4">
-                <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    className="text-sm font-medium text-slate-600 hover:underline"
-                >
-                    ← Back to the list
-                </button>
-
-                <h1 className="text-2xl font-semibold tracking-tight">
-                    {formatDate(selected.starts_at)}
-                </h1>
-
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                    <dt className="text-slate-500">Time</dt>
-                    <dd>
-                        {formatTime(selected.starts_at)} – {formatTime(selected.ends_at)}
-                    </dd>
-
-                    <dt className="text-slate-500">Status</dt>
-                    <dd>
-                        <StatusBadge status={selected.status} />
-                    </dd>
-
-                    <dt className="text-slate-500">Dock</dt>
-                    <dd>{selected.dock_number}</dd>
-
-                    <dt className="text-slate-500">Type</dt>
-                    <dd>{selected.type}</dd>
-
-                    <dt className="text-slate-500">Pallets</dt>
-                    <dd>{selected.pallets}</dd>
-
-                    <dt className="text-slate-500">Order number</dt>
-                    <dd>{selected.order_number}</dd>
-
-                    <dt className="text-slate-500">License plate</dt>
-                    <dd className="font-mono">{selected.license_plate}</dd>
-
-                    <dt className="text-slate-500">Driver phone</dt>
-                    <dd>{selected.driver_phone}</dd>
-                </dl>
-
-                <section>
-                    <h2 className="text-base font-semibold">History</h2>
-
-                    <ul className="mt-2 space-y-1 text-sm text-slate-600">
-                        {(selected.history ?? []).map((entry, index) => (
-                            <li key={index}>
-                                {formatDateTime(entry.created_at)} —{' '}
-                                {entry.from_status ? `${entry.from_status} → ` : ''}
-                                {entry.to_status}
-                                {entry.by ? ` by ${entry.by}` : ''}
-                                {entry.note ? ` (${entry.note})` : ''}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            </div>
+            <BookingDetail
+                booking={selected}
+                onBack={() => setSelected(null)}
+                onChanged={(changed) => {
+                    setSelected({ ...selected, ...changed });
+                    setReload((count) => count + 1);
+                }}
+            />
         );
     }
 

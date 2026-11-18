@@ -10,6 +10,7 @@ const navigationByRole = {
     ],
     supplier: [
         { to: '/', label: 'Dashboard' },
+        { to: '/book', label: 'Book a slot' },
         { to: '/bookings', label: 'My bookings' },
         { to: '/profile', label: 'Profile' },
     ],

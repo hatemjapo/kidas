@@ -10,9 +10,9 @@ test('gives warehouse staff the dock schedule', () => {
         .toEqual(['Dashboard', 'Dock schedule']);
 });
 
-test('gives a supplier their own bookings and their profile', () => {
+test('gives a supplier booking, their own bookings and their profile', () => {
     expect(navigationFor('supplier').map((item) => item.label))
-        .toEqual(['Dashboard', 'My bookings', 'Profile']);
+        .toEqual(['Dashboard', 'Book a slot', 'My bookings', 'Profile']);
 });
 
 test('gives nobody but a supplier the profile', () => {

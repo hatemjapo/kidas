@@ -157,6 +157,12 @@ A booking can be moved to another time, another day or another pallet count, whi
 
 Cancelling follows the same deadline and the same states, and it is a `POST` to `/cancel` rather than a `DELETE`, because nothing is deleted: the booking keeps its row with the status `cancelled`, the time of the cancellation and an optional reason, and it stays in the supplier's list. The dock becomes free again by itself — `cancelled` is not one of the states that hold a dock, so neither the slot search nor the database constraint counts it any more.
 
+### The supplier's side in the app
+
+`/book` walks a supplier through it: say whether you deliver or pick up and how many pallets you carry, look at the suggested days with their start times, pick one, add order number, driver phone and a vehicle, and the confirmation names the dock to drive to. If somebody took the slot in the meantime, the answer is the message from the API and the free slots are reloaded — the supplier picks again rather than being moved somewhere automatically.
+
+The detail view of a booking carries the two changes a supplier may make: moving it, which opens the same slot picker and allows a new pallet count, and cancelling it with an optional reason. Both buttons only appear while the booking is merely `booked`, and when the API refuses — too late, or the slot taken — its message is what the page shows.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -178,4 +184,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, and **E5-S6** – cancelling one. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, and **E5-S7** – the booking flow in the app. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
