@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SlotController;
 use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::middleware('role:supplier')->group(function (): void {
         Route::get('/profile', [ProfileController::class, 'show'])->name('api.profile.show');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
+
+        Route::get('/slots', [SlotController::class, 'index'])->name('api.slots.index');
 
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('api.vehicles.index');
         Route::post('/vehicles', [VehicleController::class, 'store'])->name('api.vehicles.store');

@@ -75,6 +75,7 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
 | `GET` | `/api/v1/profile` | the supplier's own profile |
 | `PATCH` | `/api/v1/profile` | changes company, company phone and contact name |
+| `GET` | `/api/v1/slots` | the days and start times a booking fits into |
 | `GET` | `/api/v1/vehicles` | the supplier's saved license plates |
 | `POST` | `/api/v1/vehicles` | saves a license plate |
 | `DELETE` | `/api/v1/vehicles/{id}` | removes one, `404` for a foreign one |
@@ -128,6 +129,8 @@ A start time survives four filters: it lies inside the opening hours **and** ins
 
 The arithmetic runs on instants in UTC while opening hours are wall clock times in `Europe/Berlin`, which is what `config/booking.php` sets. That is why the clock change needs no special case: a window from 01:00 to 05:00 simply holds four fewer quarter hours on the morning the clocks jump forward, and four more when they fall back. `app/Support/SlotGrid.php` does that part without touching the database, so it is covered by unit tests.
 
+`GET /api/v1/slots?type=inbound&pallets=24` is how a supplier asks. The answer carries up to five days, each with its start times as instants in UTC, plus the duration that this load takes. `after` and `before` page forward and back from a date, and a page beyond the last day simply comes back empty rather than as an error. No dock number appears anywhere in the answer, because the dock is assigned when the booking is saved (ADR-5).
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -149,4 +152,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, and **E5-S1** – the slot calculation. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, and **E5-S2** – the slot suggestion API. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
