@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import ArrivalPanel from '../components/ArrivalPanel';
+import Modal from '../components/Modal';
 import api from '../lib/api';
 import { formatDate, formatTime } from '../lib/datetime';
 import { getBlockPosition, getHourMarks, getQuarterCount } from '../lib/timeline';
@@ -30,6 +32,8 @@ function shiftDate(date, days) {
 
 export default function Schedule() {
     const [date, setDate] = useState(berlinToday());
+    const [reload, setReload] = useState(0);
+    const [selected, setSelected] = useState(null);
     const [schedule, setSchedule] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -60,7 +64,7 @@ export default function Schedule() {
         return () => {
             active = false;
         };
-    }, [date]);
+    }, [date, reload]);
 
     const quarters = schedule === null ? 0 : getQuarterCount(schedule.opens_at, schedule.closes_at);
 
@@ -96,6 +100,19 @@ export default function Schedule() {
                 </div>
             </div>
 
+            {selected !== null && (
+                <Modal onClose={() => setSelected(null)}>
+                    <ArrivalPanel
+                        booking={selected}
+                        onClose={() => setSelected(null)}
+                        onDone={(changed) => {
+                            setSelected({ ...selected, ...changed });
+                            setReload((count) => count + 1);
+                        }}
+                    />
+                </Modal>
+            )}
+
             {loading && <p className="text-sm text-slate-500">Loading the schedule…</p>}
 
             {error !== null && (
@@ -114,64 +131,72 @@ export default function Schedule() {
                     </p>
 
                     <div className="overflow-x-auto">
-                        <div className="min-w-[48rem] space-y-1">
-                            <div
-                                className="grid gap-px text-xs text-slate-500"
-                                style={{ gridTemplateColumns: `6rem repeat(${quarters}, minmax(0.75rem, 1fr))` }}
-                            >
-                                <div />
-                                {getHourMarks(schedule.opens_at, schedule.closes_at).map((mark) => (
-                                    <div
-                                        key={mark.iso}
-                                        style={{ gridColumn: `${mark.position.column + 1} / span 4` }}
-                                    >
-                                        {formatTime(mark.iso)}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {schedule.docks.map((dock) => (
+                        <div
+                            className="grid min-w-[48rem] gap-px"
+                            style={{
+                                gridTemplateColumns: `4rem repeat(${schedule.docks.length}, minmax(4.5rem, 1fr))`,
+                                gridTemplateRows: `2rem repeat(${quarters}, 1.1rem)`,
+                            }}
+                        >
+                            {schedule.docks.map((dock, index) => (
                                 <div
-                                    key={dock.number}
-                                    className="grid items-center gap-px"
-                                    style={{ gridTemplateColumns: `6rem repeat(${quarters}, minmax(0.75rem, 1fr))` }}
+                                    key={`head-${dock.number}`}
+                                    style={{ gridColumn: index + 2, gridRow: 1 }}
+                                    className={`text-center text-sm font-medium ${dock.is_active ? '' : 'text-slate-400'}`}
                                 >
-                                    <div
-                                        className={`pr-2 text-sm font-medium ${dock.is_active ? '' : 'text-slate-400'}`}
-                                    >
-                                        Dock {dock.number}
-                                        {! dock.is_active && <span className="ml-1 text-xs">(off)</span>}
-                                    </div>
-
-                                    <div
-                                        className="h-10 rounded bg-slate-50"
-                                        style={{ gridColumn: `2 / span ${Math.max(1, quarters)}` }}
-                                    />
-
-                                    {dock.bookings.map((booking) => {
-                                        const position = getBlockPosition(
-                                            schedule.opens_at,
-                                            schedule.closes_at,
-                                            booking.starts_at,
-                                            booking.ends_at
-                                        );
-
-                                        return (
-                                            <div
-                                                key={booking.id}
-                                                title={`${formatTime(booking.starts_at)} ${booking.company ?? ''} ${booking.license_plate}`}
-                                                className={`overflow-hidden rounded border px-1 py-1 text-xs whitespace-nowrap ${typeClasses[booking.type]} ${statusClasses[booking.status] ?? ''}`}
-                                                style={{
-                                                    gridColumn: `${position.column + 1} / span ${position.span}`,
-                                                    gridRow: 1,
-                                                }}
-                                            >
-                                                {formatTime(booking.starts_at)} {booking.company}
-                                            </div>
-                                        );
-                                    })}
+                                    Dock {dock.number}
+                                    {! dock.is_active && <span className="ml-1 text-xs">(off)</span>}
                                 </div>
                             ))}
+
+                            {getHourMarks(schedule.opens_at, schedule.closes_at).map((mark) => (
+                                <div
+                                    key={mark.iso}
+                                    style={{ gridColumn: 1, gridRow: `${mark.position.start + 2} / span 4` }}
+                                    className="pr-2 text-right text-xs text-slate-500"
+                                >
+                                    {formatTime(mark.iso)}
+                                </div>
+                            ))}
+
+                            {schedule.docks.map((dock, index) => (
+                                <div
+                                    key={`lane-${dock.number}`}
+                                    style={{
+                                        gridColumn: index + 2,
+                                        gridRow: `2 / span ${Math.max(1, quarters)}`,
+                                    }}
+                                    className="rounded bg-slate-50"
+                                />
+                            ))}
+
+                            {schedule.docks.flatMap((dock, index) =>
+                                dock.bookings.map((booking) => {
+                                    const position = getBlockPosition(
+                                        schedule.opens_at,
+                                        schedule.closes_at,
+                                        booking.starts_at,
+                                        booking.ends_at
+                                    );
+
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={booking.id}
+                                            onClick={() => setSelected({ ...booking, dock_number: dock.number })}
+                                            title={`${formatTime(booking.starts_at)} ${booking.company ?? ''} ${booking.license_plate}`}
+                                            className={`overflow-hidden rounded border px-1 text-left text-xs leading-tight ${typeClasses[booking.type]} ${statusClasses[booking.status] ?? ''}`}
+                                            style={{
+                                                gridColumn: index + 2,
+                                                gridRow: `${position.start + 2} / span ${position.span}`,
+                                            }}
+                                        >
+                                            {formatTime(booking.starts_at)} {booking.company}
+                                            {booking.plate_mismatch && ! booking.plate_verified && ' ⚠'}
+                                        </button>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </>

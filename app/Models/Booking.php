@@ -48,6 +48,24 @@ class Booking extends Model
         return Attribute::set(fn (?string $value): ?string => $value === null ? null : Vehicle::normalizePlate($value));
     }
 
+    public static function getBookingForWarehouse(int $bookingId): self
+    {
+        return self::query()->with(['dock', 'supplier'])->findOrFail($bookingId);
+    }
+
+    public function hasAnUnverifiedPlateMismatch(): bool
+    {
+        return $this->plate_mismatch && $this->plate_verified_by === null;
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function plateVerifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'plate_verified_by');
+    }
+
     /**
      * @return BelongsTo<Dock, $this>
      */

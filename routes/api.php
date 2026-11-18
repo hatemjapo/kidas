@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ProfileController;
@@ -22,6 +23,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::middleware('role:staff,admin')->group(function (): void {
         Route::get('/schedule', [ScheduleController::class, 'show'])->name('api.schedule.show');
+
+        Route::post('/bookings/{booking}/arrival', [ArrivalController::class, 'store'])
+            ->whereNumber('booking')
+            ->name('api.bookings.arrival');
+
+        Route::patch('/bookings/{booking}/arrival', [ArrivalController::class, 'update'])
+            ->whereNumber('booking')
+            ->name('api.bookings.arrival.update');
+
+        Route::post('/bookings/{booking}/plate-verification', [ArrivalController::class, 'verify'])
+            ->whereNumber('booking')
+            ->name('api.bookings.plate-verification');
     });
 
     Route::middleware('role:supplier')->group(function (): void {

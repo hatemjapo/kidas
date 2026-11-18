@@ -149,11 +149,10 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E5-S7 (M) Booking flow in the frontend** – React: type + pallets → pick one of the suggested slots → confirm details → confirmation page; moving and cancelling a booking from its detail view.
 
 ### E6 – Warehouse View & Handling (Staff)
-- **E6-S1 (M) Daily dock timeline** – Docks as rows, time as columns, colored by type and status; switch between days.
-- **E6-S2 (M) Book pickup** – Carrier, license plate, phone, pallets → slot on an outbound dock.
-- **E6-S3 (M) Register arrival** – Enter license plate; on mismatch the status stays `arrived` and is flagged "plate mismatch"; staff confirms after verifying with the company.
-- **E6-S4 (M) Start handling / release dock** – Handling can only start once the plate is verified; "dock free" sets the status to `completed`. *AC:* invalid transitions → 422.
-- **E6-S5 (M) No-show** – Can be marked once the slot has passed.
+- **E6-S1 (M) Daily dock timeline** – Docks as columns, time as rows, colored by type and status; switch between days.
+- **E6-S2 (M) Register arrival** – Enter license plate; on mismatch the status stays `arrived` and is flagged "plate mismatch"; staff confirms after verifying with the company.
+- **E6-S3 (M) Start handling / release dock** – Handling can only start once the plate is verified; "dock free" sets the status to `completed`. *AC:* invalid transitions → 422.
+- **E6-S4 (M) No-show** – Can be marked once the slot has passed.
 
 ### E7 – Admin Actions & Notifications
 - **E7-S1 (M) Admin books** – Inbound or outbound for any supplier, without the 3 h restriction.
