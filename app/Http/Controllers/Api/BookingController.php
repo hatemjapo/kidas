@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Bookings\CreateBooking;
+use App\Actions\Bookings\RescheduleBooking;
 use App\Data\NewBooking;
 use App\Enums\DockUsage;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\RescheduleBookingRequest;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Supplier;
@@ -47,6 +49,25 @@ class BookingController extends Controller
         ));
 
         return (new BookingResource($booking->load('dock')))->response()->setStatusCode(201);
+    }
+
+    public function update(RescheduleBookingRequest $request, int $booking, RescheduleBooking $rescheduleBooking): BookingResource
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $found = $this->supplierOf($request)->getBookingWithHistory($booking);
+
+        $startsAt = $request->date('starts_at');
+
+        $moved = $rescheduleBooking->rescheduleBookingForSupplier(
+            $user,
+            $found,
+            $startsAt === null ? null : CarbonImmutable::parse($startsAt)->utc(),
+            $request->input('pallets') === null ? null : $request->integer('pallets'),
+        );
+
+        return new BookingResource($moved->load('dock'));
     }
 
     private function supplierOf(Request $request): Supplier

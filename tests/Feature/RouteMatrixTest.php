@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
+use function Pest\Laravel\patchJson;
 use function Pest\Laravel\postJson;
 
 function actor(string $role): ?User
@@ -85,6 +86,7 @@ test('the profile belongs to suppliers alone', function (string $role, int $stat
     getJson('/api/v1/slots?type=inbound&pallets=24')->assertStatus($status);
     postJson('/api/v1/bookings')->assertStatus($status === 200 ? 422 : $status);
     getJson('/api/v1/bookings')->assertStatus($status);
+    patchJson('/api/v1/bookings/1', ['pallets' => 10])->assertStatus($status === 200 ? 404 : $status);
 })->with([
     ['guest', 401],
     ['admin', 403],
