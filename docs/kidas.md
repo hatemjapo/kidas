@@ -175,6 +175,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 
 ### E10 – Adjustments
 - **E10-S1 (N) Remove the skeleton seeder** – `DatabaseSeeder` still creates the example user from the Laravel skeleton. *AC:* `db:seed` creates nothing that the application does not need.
+- **E10-S2 (N) Queries into the models** – the Filament day page and the day actions build their own queries; the "active docks" one exists twice. `Dock` and `CalendarDay` get finders instead (`getActiveDocks`, `getReleasedDatesInMonth`). *AC:* no query inside a Filament page, and every query that carries a meaning exists once.
 
 ### Future ideas
 Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.

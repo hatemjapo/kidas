@@ -34,6 +34,7 @@ test('the panel belongs to admins alone', function (string $role, int $status) {
     get('/admin/opening-defaults')->assertStatus($status);
     get('/admin/shift-defaults')->assertStatus($status);
     get('/admin/days')->assertStatus($status);
+    get('/admin/pallet-rules')->assertStatus($status);
 })->with([
     ['guest', 302],
     ['admin', 200],
