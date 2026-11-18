@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BookingStatus;
 use App\Enums\DockUsage;
 use App\Enums\Shift;
 use Carbon\CarbonImmutable;
@@ -71,13 +72,63 @@ class CalendarDay extends Model
             ->whereDate('date', '>=', $from->setTimezone((string) config('booking.timezone'))->toDateString());
     }
 
-    public function hasActiveDockForShiftAndUsage(Shift $shift, DockUsage $usage): bool
+    public static function getBookableDayForDate(CarbonImmutable $date): ?self
+    {
+        return self::query()
+            ->where('is_released', true)
+            ->where('is_closed', false)
+            ->whereDate('date', $date->toDateString())
+            ->first();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function getActiveDockIdsForShiftAndUsage(Shift $shift, DockUsage $usage): array
     {
         return $this->dockUsages()
             ->where('shift', $shift)
             ->where('usage', $usage)
             ->whereHas('dock', fn (Builder $query) => $query->where('is_active', true))
-            ->exists();
+            ->pluck('dock_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
+    /**
+     * @return array<int, list<array{0: CarbonImmutable, 1: CarbonImmutable}>>
+     */
+    public function getBlockingIntervalsByDock(): array
+    {
+        [$dayStart, $dayEnd] = $this->getOpeningWindow();
+
+        $intervals = [];
+
+        $bookings = Booking::query()
+            ->whereIn('status', BookingStatus::blocking())
+            ->where('starts_at', '<', $dayEnd)
+            ->where('ends_at', '>', $dayStart)
+            ->get(['dock_id', 'starts_at', 'ends_at']);
+
+        foreach ($bookings as $booking) {
+            $intervals[(int) $booking->dock_id][] = [
+                CarbonImmutable::parse($booking->starts_at),
+                CarbonImmutable::parse($booking->ends_at),
+            ];
+        }
+
+        return $intervals;
+    }
+
+    /**
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    public function getOpeningWindow(): array
+    {
+        return [
+            $this->toInstant($this->opens_at),
+            $this->toInstant($this->closes_at),
+        ];
     }
 
     /**
@@ -85,20 +136,22 @@ class CalendarDay extends Model
      */
     public function getWindowForShift(Shift $shift): array
     {
-        $timezone = (string) config('booking.timezone');
-        $date = $this->date->toDateString();
+        [$opensAt, $closesAt] = $this->getOpeningWindow();
 
-        $shiftStart = $shift === Shift::Early ? $this->early_start : $this->late_start;
-        $shiftEnd = $shift === Shift::Early ? $this->early_end : $this->late_end;
-
-        $opensAt = CarbonImmutable::parse("{$date} {$this->opens_at}", $timezone);
-        $closesAt = CarbonImmutable::parse("{$date} {$this->closes_at}", $timezone);
-        $startsAt = CarbonImmutable::parse("{$date} {$shiftStart}", $timezone);
-        $endsAt = CarbonImmutable::parse("{$date} {$shiftEnd}", $timezone);
+        $startsAt = $this->toInstant($shift === Shift::Early ? $this->early_start : $this->late_start);
+        $endsAt = $this->toInstant($shift === Shift::Early ? $this->early_end : $this->late_end);
 
         return [
-            ($opensAt->greaterThan($startsAt) ? $opensAt : $startsAt)->utc(),
-            ($closesAt->lessThan($endsAt) ? $closesAt : $endsAt)->utc(),
+            $opensAt->greaterThan($startsAt) ? $opensAt : $startsAt,
+            $closesAt->lessThan($endsAt) ? $closesAt : $endsAt,
         ];
+    }
+
+    private function toInstant(string $time): CarbonImmutable
+    {
+        return CarbonImmutable::parse(
+            "{$this->date->toDateString()} {$time}",
+            (string) config('booking.timezone'),
+        )->utc();
     }
 }
