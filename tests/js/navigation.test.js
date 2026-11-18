@@ -10,9 +10,14 @@ test('gives warehouse staff the dock schedule', () => {
         .toEqual(['Dashboard', 'Dock schedule']);
 });
 
-test('gives a supplier only their own bookings', () => {
+test('gives a supplier their own bookings and their profile', () => {
     expect(navigationFor('supplier').map((item) => item.label))
-        .toEqual(['Dashboard', 'My bookings']);
+        .toEqual(['Dashboard', 'My bookings', 'Profile']);
+});
+
+test('gives nobody but a supplier the profile', () => {
+    expect(navigationFor('admin').map((item) => item.to)).not.toContain('/profile');
+    expect(navigationFor('staff').map((item) => item.to)).not.toContain('/profile');
 });
 
 test('gives an unknown role nothing', () => {

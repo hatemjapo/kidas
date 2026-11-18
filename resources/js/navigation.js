@@ -11,6 +11,7 @@ const navigationByRole = {
     supplier: [
         { to: '/', label: 'Dashboard' },
         { to: '/bookings', label: 'My bookings' },
+        { to: '/profile', label: 'Profile' },
     ],
 };
 
