@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\HandlingController;
+use App\Http\Controllers\Api\NoShowController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SlotController;
@@ -44,6 +45,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/bookings/{booking}/completion', [HandlingController::class, 'complete'])
             ->whereNumber('booking')
             ->name('api.bookings.completion');
+
+        Route::post('/bookings/{booking}/no-show', [NoShowController::class, 'store'])
+            ->whereNumber('booking')
+            ->name('api.bookings.no-show');
     });
 
     Route::middleware('role:supplier')->group(function (): void {

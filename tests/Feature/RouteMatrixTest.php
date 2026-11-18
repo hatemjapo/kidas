@@ -88,6 +88,7 @@ test('the warehouse timeline belongs to staff and admins', function (string $rol
         ->assertStatus($status === 200 ? 404 : $status);
     postJson('/api/v1/bookings/1/handling')->assertStatus($status === 200 ? 404 : $status);
     postJson('/api/v1/bookings/1/completion')->assertStatus($status === 200 ? 404 : $status);
+    postJson('/api/v1/bookings/1/no-show')->assertStatus($status === 200 ? 404 : $status);
 })->with([
     ['guest', 401],
     ['admin', 200],
