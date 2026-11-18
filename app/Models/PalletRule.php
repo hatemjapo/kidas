@@ -18,4 +18,12 @@ class PalletRule extends Model
             'duration_minutes' => 'integer',
         ];
     }
+
+    public static function getRuleForPallets(int $pallets): ?self
+    {
+        return self::query()
+            ->where('max_pallets', '>=', $pallets)
+            ->orderBy('max_pallets')
+            ->first();
+    }
 }

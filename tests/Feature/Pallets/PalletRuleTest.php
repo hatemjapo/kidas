@@ -76,3 +76,19 @@ test('keeps the pallet count out of mass assignment', function () {
     expect($tier->refresh()->max_pallets)->toBe(10)
         ->and($tier->duration_minutes)->toBe(30);
 });
+
+test('the model hands back the smallest tier that carries the load', function (int $pallets, int $maxPallets) {
+    $rule = PalletRule::getRuleForPallets($pallets);
+
+    expect($rule)->not->toBeNull()
+        ->and($rule->max_pallets)->toBe($maxPallets);
+})->with([
+    'a single pallet' => [1, 10],
+    'the top of a tier' => [20, 20],
+    'one pallet above it' => [21, 30],
+    'the maximum' => [70, 70],
+]);
+
+test('the model hands back nothing when no tier carries the load', function () {
+    expect(PalletRule::getRuleForPallets(71))->toBeNull();
+});

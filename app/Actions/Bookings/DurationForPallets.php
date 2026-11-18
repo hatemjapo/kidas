@@ -15,10 +15,7 @@ class DurationForPallets
             throw new DomainException("A booking carries between 1 and {$maxPallets} pallets, not {$pallets}.");
         }
 
-        $rule = PalletRule::query()
-            ->where('max_pallets', '>=', $pallets)
-            ->orderBy('max_pallets')
-            ->first();
+        $rule = PalletRule::getRuleForPallets($pallets);
 
         if (! $rule instanceof PalletRule) {
             throw new DomainException("No pallet rule covers {$pallets} pallets.");
