@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Bookings\CancelBooking;
 use App\Actions\Bookings\CreateBooking;
 use App\Actions\Bookings\RescheduleBooking;
 use App\Data\NewBooking;
 use App\Enums\DockUsage;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\CancelBookingRequest;
 use App\Http\Requests\Api\RescheduleBookingRequest;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
@@ -68,6 +70,20 @@ class BookingController extends Controller
         );
 
         return new BookingResource($moved->load('dock'));
+    }
+
+    public function cancel(CancelBookingRequest $request, int $booking, CancelBooking $cancelBooking): BookingResource
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $cancelled = $cancelBooking->cancelBookingForSupplier(
+            $user,
+            $this->supplierOf($request)->getBookingWithHistory($booking),
+            $request->input('reason') === null ? null : $request->string('reason')->toString(),
+        );
+
+        return new BookingResource($cancelled->load('dock'));
     }
 
     private function supplierOf(Request $request): Supplier

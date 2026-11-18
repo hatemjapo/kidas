@@ -35,6 +35,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
             ->whereNumber('booking')
             ->name('api.bookings.update');
 
+        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
+            ->whereNumber('booking')
+            ->name('api.bookings.cancel');
+
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('api.vehicles.index');
         Route::post('/vehicles', [VehicleController::class, 'store'])->name('api.vehicles.store');
         Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])
