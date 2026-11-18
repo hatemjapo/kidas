@@ -2,6 +2,7 @@ const navigationByRole = {
     admin: [
         { to: '/', label: 'Dashboard' },
         { to: '/schedule', label: 'Dock schedule' },
+        { to: '/book', label: 'Book for a supplier' },
         { to: '/bookings', label: 'Bookings' },
     ],
     staff: [

@@ -29,7 +29,7 @@ export default function Router() {
                         <Route path="/schedule" element={<Schedule />} />
                     </Route>
 
-                    <Route element={<RequireRole allow={['supplier']} />}>
+                    <Route element={<RequireRole allow={['supplier', 'admin']} />}>
                         <Route path="/book" element={<Book />} />
                         <Route path="/profile" element={<Profile />} />
                     </Route>

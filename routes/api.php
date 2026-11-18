@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminBookingController;
 use App\Http\Controllers\Api\ArrivalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\NoShowController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SlotController;
+use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,11 +53,23 @@ Route::middleware('auth:sanctum')->group(function (): void {
             ->name('api.bookings.no-show');
     });
 
+    Route::middleware('role:admin')->group(function (): void {
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('api.suppliers.index');
+
+        Route::get('/suppliers/{supplier}/vehicles', [SupplierController::class, 'vehicles'])
+            ->whereNumber('supplier')
+            ->name('api.suppliers.vehicles');
+
+        Route::post('/admin/bookings', [AdminBookingController::class, 'store'])->name('api.admin.bookings.store');
+    });
+
+    Route::middleware('role:supplier,admin')->group(function (): void {
+        Route::get('/slots', [SlotController::class, 'index'])->name('api.slots.index');
+    });
+
     Route::middleware('role:supplier')->group(function (): void {
         Route::get('/profile', [ProfileController::class, 'show'])->name('api.profile.show');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
-
-        Route::get('/slots', [SlotController::class, 'index'])->name('api.slots.index');
 
         Route::get('/bookings', [BookingController::class, 'index'])->name('api.bookings.index');
         Route::post('/bookings', [BookingController::class, 'store'])->name('api.bookings.store');
