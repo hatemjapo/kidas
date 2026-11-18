@@ -25,7 +25,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/slots', [SlotController::class, 'index'])->name('api.slots.index');
 
+        Route::get('/bookings', [BookingController::class, 'index'])->name('api.bookings.index');
         Route::post('/bookings', [BookingController::class, 'store'])->name('api.bookings.store');
+        Route::get('/bookings/{booking}', [BookingController::class, 'show'])
+            ->whereNumber('booking')
+            ->name('api.bookings.show');
 
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('api.vehicles.index');
         Route::post('/vehicles', [VehicleController::class, 'store'])->name('api.vehicles.store');

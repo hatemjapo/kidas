@@ -76,7 +76,9 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/profile` | the supplier's own profile |
 | `PATCH` | `/api/v1/profile` | changes company, company phone and contact name |
 | `GET` | `/api/v1/slots` | the days and start times a booking fits into |
+| `GET` | `/api/v1/bookings` | the supplier's own bookings, page by page |
 | `POST` | `/api/v1/bookings` | books one of those start times |
+| `GET` | `/api/v1/bookings/{id}` | one booking with its history, `404` for a foreign one |
 | `GET` | `/api/v1/vehicles` | the supplier's saved license plates |
 | `POST` | `/api/v1/vehicles` | saves a license plate |
 | `DELETE` | `/api/v1/vehicles/{id}` | removes one, `404` for a foreign one |
@@ -147,6 +149,8 @@ The half open range is why a booking ending at 9:30 and one starting at 9:30 are
 
 Every booking starts on the status `booked` and writes its first entry in `booking_events`; the transitions themselves arrive with the warehouse view (ADR-4).
 
+`/bookings` in the app lists what a supplier has booked, the latest first and twenty to a page, and opening one shows its details together with the history from `booking_events` — who moved it to which status, and when. A booking of another supplier answers `404` rather than `403`, because the lookup runs through the supplier's own bookings and foreign ones are not reachable at all.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -168,4 +172,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, and **E5-S3** – creating a booking. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, and **E5-S4** – the supplier's own bookings. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

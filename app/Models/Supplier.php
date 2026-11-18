@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 #[Fillable(['company_name', 'company_phone'])]
 class Supplier extends Model
@@ -33,6 +34,24 @@ class Supplier extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Booking>
+     */
+    public function getBookingsPage(int $perPage): LengthAwarePaginator
+    {
+        return $this->bookings()
+            ->with('dock')
+            ->orderByDesc('starts_at')
+            ->paginate($perPage);
+    }
+
+    public function getBookingWithHistory(int $bookingId): Booking
+    {
+        return $this->bookings()
+            ->with(['dock', 'events.user'])
+            ->findOrFail($bookingId);
     }
 
     /**

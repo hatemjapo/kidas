@@ -12,9 +12,23 @@ use App\Models\Supplier;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BookingController extends Controller
 {
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        return BookingResource::collection(
+            $this->supplierOf($request)->getBookingsPage((int) config('booking.bookings_per_page'))
+        );
+    }
+
+    public function show(Request $request, int $booking): BookingResource
+    {
+        return new BookingResource($this->supplierOf($request)->getBookingWithHistory($booking));
+    }
+
     public function store(StoreBookingRequest $request, CreateBooking $createBooking): JsonResponse
     {
         $user = $request->user();
@@ -33,6 +47,17 @@ class BookingController extends Controller
         ));
 
         return (new BookingResource($booking->load('dock')))->response()->setStatusCode(201);
+    }
+
+    private function supplierOf(Request $request): Supplier
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $supplier = $user->supplier;
+        assert($supplier instanceof Supplier);
+
+        return $supplier;
     }
 
     private function getLicensePlate(StoreBookingRequest $request, Supplier $supplier): string
