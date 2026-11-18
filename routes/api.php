@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SlotController;
 use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,10 @@ Route::post('/login', [AuthController::class, 'login'])
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
     Route::get('/me', [AuthController::class, 'me'])->name('api.me');
+
+    Route::middleware('role:staff,admin')->group(function (): void {
+        Route::get('/schedule', [ScheduleController::class, 'show'])->name('api.schedule.show');
+    });
 
     Route::middleware('role:supplier')->group(function (): void {
         Route::get('/profile', [ProfileController::class, 'show'])->name('api.profile.show');

@@ -81,6 +81,7 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/bookings/{id}` | one booking with its history, `404` for a foreign one |
 | `PATCH` | `/api/v1/bookings/{id}` | moves a booking to another time or pallet count |
 | `POST` | `/api/v1/bookings/{id}/cancel` | cancels a booking, reason optional |
+| `GET` | `/api/v1/schedule?date=` | the warehouse timeline of one day |
 | `GET` | `/api/v1/vehicles` | the supplier's saved license plates |
 | `POST` | `/api/v1/vehicles` | saves a license plate |
 | `DELETE` | `/api/v1/vehicles/{id}` | removes one, `404` for a foreign one |
@@ -163,6 +164,12 @@ Cancelling follows the same deadline and the same states, and it is a `POST` to 
 
 The detail view of a booking carries the two changes a supplier may make: moving it, which opens the same slot picker and allows a new pallet count, and cancelling it with an optional reason. Both buttons only appear while the booking is merely `booked`, and when the API refuses — too late, or the slot taken — its message is what the page shows.
 
+### The warehouse side in the app
+
+`/schedule` is the day of the warehouse: the ten docks as rows, the opening hours of that day as quarter-hour columns, and every booking as a block in its row. Blocks are tinted by what they are — a delivery or a pickup — and marked by where they stand: being handled, done, or nobody showed up. Cancelled bookings are left out, because the timeline shows what is coming rather than what was called off. Docks that are switched off keep their row, greyed out, so it stays visible that dock 7 is out of service.
+
+Arrows move one day back and forth, and a day that was never released is shown with the opening hours of its weekday and empty rows rather than an error. The arithmetic that turns an instant into a column lives in `resources/js/lib/timeline.js` and is covered by unit tests. Staff and admins may open it; a supplier gets `403`.
+
 `MAIL_MAILER=log` is the setting for development, so these mails are written to `storage/logs/laravel.log` instead of being delivered. Real delivery needs an SMTP account in `.env`.
 
 ### The first admin
@@ -184,4 +191,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, and **E5-S7** – the booking flow in the app. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, and **E6-S1** – the warehouse timeline. The full README described in `docs/kidas.md` section 7 follows in E9-S2.

@@ -24,6 +24,20 @@ enum BookingStatus: string
     }
 
     /**
+     * The states the warehouse timeline shows: everything that still means a lorry.
+     *
+     * @return list<string>
+     */
+    public static function onTheTimeline(): array
+    {
+        return collect(self::cases())
+            ->reject(fn (self $status): bool => $status === self::Cancelled)
+            ->map(fn (self $status): string => $status->value)
+            ->values()
+            ->all();
+    }
+
+    /**
      * The states in which a booking still holds its dock.
      *
      * @return list<string>

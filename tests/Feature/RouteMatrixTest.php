@@ -74,6 +74,21 @@ test('logging out is possible for every signed in role', function (string $role,
     ['approved supplier', 204],
 ]);
 
+test('the warehouse timeline belongs to staff and admins', function (string $role, int $status) {
+    $user = actor($role);
+
+    if ($user !== null) {
+        actingAs($user);
+    }
+
+    getJson('/api/v1/schedule?date=2027-06-02')->assertStatus($status);
+})->with([
+    ['guest', 401],
+    ['admin', 200],
+    ['staff', 200],
+    ['approved supplier', 403],
+]);
+
 test('the profile belongs to suppliers alone', function (string $role, int $status) {
     $user = actor($role);
 
