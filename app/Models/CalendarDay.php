@@ -96,6 +96,44 @@ class CalendarDay extends Model
     }
 
     /**
+     * @return array<int, list<Booking>>
+     */
+    public function getTimelineBookingsByDock(): array
+    {
+        [$dayStart, $dayEnd] = $this->getOpeningWindow();
+
+        $bookings = Booking::query()
+            ->whereIn('status', BookingStatus::onTheTimeline())
+            ->where('starts_at', '<', $dayEnd)
+            ->where('ends_at', '>', $dayStart)
+            ->with('supplier')
+            ->orderBy('starts_at')
+            ->get();
+
+        $byDock = [];
+
+        foreach ($bookings as $booking) {
+            $byDock[(int) $booking->dock_id][] = $booking;
+        }
+
+        return $byDock;
+    }
+
+    /**
+     * @return array<int, array<string, string|null>>
+     */
+    public function getUsageByDock(): array
+    {
+        $usage = [];
+
+        foreach ($this->dockUsages as $row) {
+            $usage[(int) $row->dock_id][$row->shift->value] = $row->usage->value;
+        }
+
+        return $usage;
+    }
+
+    /**
      * @return array<int, list<array{0: CarbonImmutable, 1: CarbonImmutable}>>
      */
     public function getBlockingIntervalsByDock(): array
