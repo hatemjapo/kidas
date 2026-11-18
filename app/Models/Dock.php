@@ -57,6 +57,7 @@ class Dock extends Model
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         bool $lockForUpdate = false,
+        ?int $exceptBookingId = null,
     ): Collection {
         $query = self::query()
             ->where('is_active', true)
@@ -67,7 +68,8 @@ class Dock extends Model
             ->whereDoesntHave('bookings', fn (Builder $bookings) => $bookings
                 ->whereIn('status', BookingStatus::blocking())
                 ->where('starts_at', '<', $endsAt)
-                ->where('ends_at', '>', $startsAt))
+                ->where('ends_at', '>', $startsAt)
+                ->when($exceptBookingId !== null, fn (Builder $others) => $others->whereKeyNot($exceptBookingId)))
             ->orderBy('number');
 
         if ($lockForUpdate) {
