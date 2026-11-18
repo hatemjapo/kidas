@@ -142,7 +142,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 ### E5 – Supplier Booking (Core)
 - **E5-S1 (M) Slot calculation (service)** – Input: date, type, pallets → duration from pallet rules → available start times on a 15-minute grid across all matching docks. *AC (unit tests!):* respects opening hours ∩ shift times, no slot spanning a shift change, only released future days, back-to-back 9:30/9:30 allowed, DST transitions handled correctly.
 - **E5-S2 (M) Slot suggestion API** – `GET /api/v1/slots?date=&pallets=` returns available start times (without dock number).
-- **E5-S3 (M) Create booking** – Order number, pallets, vehicle (select or new), driver phone, start time → dock assignment under lock (ADR-3/5). *AC:* concurrency test "two bookings for the last free slot" → exactly one succeeds, the other gets 409.
+- **E5-S3 (M) Create booking** – Order number, pallets, vehicle (select or new), driver phone, start time → dock assignment under lock (ADR-3/5); from here on the slot search stops offering a start time once no dock is free for it, and drops a day that has none left. *AC:* concurrency test "two bookings for the last free slot" → exactly one succeeds, the other gets 409.
 - **E5-S4 (M) My bookings** – List + detail with status; own bookings only (foreign ID → 404).
 - **E5-S5 (M) Reschedule** – New time/pallets; same rules as a new booking; only up to 3 h before the slot.
 - **E5-S6 (M) Cancel** – Only up to 3 h before the slot; reason optional.
