@@ -6,6 +6,7 @@ import Bookings from './pages/Bookings';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
+import Profile from './pages/Profile';
 import Register from './pages/Register';
 import Schedule from './pages/Schedule';
 
@@ -25,6 +26,10 @@ export default function Router() {
 
                     <Route element={<RequireRole allow={['admin', 'staff']} />}>
                         <Route path="/schedule" element={<Schedule />} />
+                    </Route>
+
+                    <Route element={<RequireRole allow={['supplier']} />}>
+                        <Route path="/profile" element={<Profile />} />
                     </Route>
 
                     <Route path="*" element={<NotFound />} />
