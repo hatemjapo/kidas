@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import api, { csrf } from '../lib/api';
+import AuthLayout from '../layouts/AuthLayout';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import InfoBox from '../components/ui/InfoBox';
+import TextField from '../components/ui/TextField';
 
 const emptyForm = {
     company_name: '',
@@ -60,82 +65,65 @@ export default function Register() {
 
     if (registered) {
         return (
-            <div className="flex min-h-full items-center justify-center px-6 py-16">
-                <div className="w-full max-w-sm">
-                    <h1 className="text-lg font-semibold tracking-tight">Registration received</h1>
+            <AuthLayout title="Registration received">
+                <p role="status" className="mt-4 text-[15px] text-ink">
+                    The warehouse is checking your registration. As soon as it is approved you will receive an email
+                    with a link to sign in.
+                </p>
 
-                    <p role="status" className="mt-4 text-sm text-slate-600">
-                        We are reviewing your registration. As soon as it is approved you will receive an
-                        email with a link to sign in.
-                    </p>
-
-                    <p className="mt-6 text-sm text-slate-500">
-                        <Link to="/login" className="font-medium text-slate-900 underline">
-                            Back to sign in
-                        </Link>
-                    </p>
-                </div>
-            </div>
+                <p className="mt-6 text-sm text-muted">
+                    <Link to="/login" className="font-semibold text-brand-700 underline hover:text-brand-800">
+                        Back to sign in
+                    </Link>
+                </p>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="flex min-h-full items-center justify-center px-6 py-16">
-            <div className="w-full max-w-sm">
-                <h1 className="text-lg font-semibold tracking-tight">Register your company</h1>
+        <AuthLayout
+            title="Register as a supplier"
+            lead="Tell us about your company; the warehouse approves it by hand."
+            aside={
+                <>
+                    <hr className="mt-8 border-line" />
 
-                {message && (
-                    <p
-                        role="alert"
-                        className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                    >
-                        {message}
+                    <p className="mt-6 text-sm text-muted">
+                        Already approved?{' '}
+                        <Link to="/login" className="font-semibold text-brand-700 hover:text-brand-800">
+                            Sign in
+                        </Link>
                     </p>
-                )}
 
-                <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
-                    {fields.map((field) => (
-                        <div key={field.name} className="flex flex-col gap-1">
-                            <label
-                                htmlFor={field.name}
-                                className="text-sm font-medium text-slate-700 after:ml-0.5 after:text-red-600 after:content-['*']"
-                            >
-                                {field.label}
-                            </label>
-                            <input
-                                id={field.name}
-                                name={field.name}
-                                type={field.type}
-                                autoComplete={field.autoComplete}
-                                required
-                                value={form[field.name]}
-                                onChange={(event) =>
-                                    setForm({ ...form, [field.name]: event.target.value })
-                                }
-                                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                            />
-                            {errors[field.name] && (
-                                <p className="text-sm text-red-600">{errors[field.name][0]}</p>
-                            )}
-                        </div>
-                    ))}
+                    <InfoBox className="mt-4">
+                        The warehouse approves every registration by hand. You will get an email with a link to sign in
+                        once your company has been approved.
+                    </InfoBox>
+                </>
+            }
+        >
+            {message && <Alert className="mt-4">{message}</Alert>}
 
-                    <button
-                        type="submit"
-                        disabled={submitting}
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                        {submitting ? 'Sending…' : 'Register'}
-                    </button>
-                </form>
+            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
+                {fields.map((field) => (
+                    <TextField
+                        key={field.name}
+                        id={field.name}
+                        name={field.name}
+                        type={field.type}
+                        label={field.label}
+                        autoComplete={field.autoComplete}
+                        required
+                        error={errors[field.name]?.[0]}
+                        value={form[field.name]}
+                        onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
+                    />
+                ))}
 
-                <p className="mt-6 text-sm text-slate-500">
-                    Already approved?{' '}
-                    <Link to="/login" className="font-medium text-slate-900 underline">
-                        Sign in
-                    </Link>
-                </p>
-            </div>
-        </div>
+                <Button type="submit" loading={submitting} className="mt-2 w-full">
+                    {submitting ? 'Sending…' : 'Register'}
+                </Button>
+            </form>
+        </AuthLayout>
     );
 }

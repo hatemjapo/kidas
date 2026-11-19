@@ -9,7 +9,7 @@ vi.mock('../../resources/js/auth/AuthContext', () => ({
 const { useAuth } = await import('../../resources/js/auth/AuthContext');
 const { default: Login } = await import('../../resources/js/pages/Login');
 
-function renderLogin(login) {
+function renderLogin(login = vi.fn()) {
     useAuth.mockReturnValue({ user: null, role: null, loading: false, login, logout: vi.fn() });
 
     return render(
@@ -122,7 +122,7 @@ test('shows why a supplier without approval is kept out', async () => {
 test('points new suppliers at the registration form', () => {
     renderLogin(vi.fn());
 
-    expect(screen.getByRole('link', { name: 'Register your company' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Register as a supplier' })).toHaveAttribute(
         'href',
         '/register'
     );
@@ -133,4 +133,23 @@ test('marks both fields as required', () => {
 
     expect(screen.getByLabelText('Email')).toBeRequired();
     expect(screen.getByLabelText('Password')).toBeRequired();
+});
+
+test('explains what KiDas is beside the form', () => {
+    renderLogin();
+
+    expect(screen.getByRole('heading', { name: /Every lorry at the right dock/ })).toBeInTheDocument();
+    expect(screen.getByText(/the warehouse sees the day per dock/)).toBeInTheDocument();
+});
+
+test('says that the warehouse approves a new company', () => {
+    renderLogin();
+
+    expect(screen.getByText(/checked by the warehouse/)).toBeInTheDocument();
+});
+
+test('offers the way to the registration', () => {
+    renderLogin();
+
+    expect(screen.getByRole('link', { name: 'Register as a supplier' })).toHaveAttribute('href', '/register');
 });

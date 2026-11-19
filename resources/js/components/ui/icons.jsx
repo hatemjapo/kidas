@@ -42,3 +42,12 @@ export function SpinnerIcon({ className = 'size-5' }) {
         </svg>
     );
 }
+
+export function InfoIcon({ className = 'size-5' }) {
+    return (
+        <svg {...base} className={className}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 7.5h.01" />
+        </svg>
+    );
+}
