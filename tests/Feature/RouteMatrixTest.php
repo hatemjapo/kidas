@@ -109,6 +109,7 @@ test('the slots and the admin booking are open to whoever books', function (stri
     postJson('/api/v1/admin/bookings')->assertStatus($adminBooking === 200 ? 422 : $adminBooking);
     patchJson('/api/v1/admin/bookings/1', ['pallets' => 10])
         ->assertStatus($adminBooking === 200 ? 404 : $adminBooking);
+    postJson('/api/v1/admin/bookings/1/cancel')->assertStatus($adminBooking === 200 ? 404 : $adminBooking);
 })->with([
     ['guest', 401, 401],
     ['admin', 200, 200],
