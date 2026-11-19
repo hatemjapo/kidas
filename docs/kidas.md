@@ -245,7 +245,7 @@ so no CSS framework or component library is needed on top.
   and the position of the current-time line.
 - Status colours live in one map, `lib/statusStyles.js`, keyed by status and booking type, so the schedule, the detail
   page and the lists cannot drift apart.
-- Icons are inline stroke SVGs (24 px grid, 2 px stroke) or one icon package; decided in E11-S2. No emoji.
+- Icons are own inline stroke SVGs (24 px grid, 2 px stroke). No icon package, no emoji.
 
 #### Foundation
 - **E11-S1 (M) Design tokens and font** – colours, font and radii defined once, so every page uses the same values.
@@ -314,11 +314,11 @@ Each of these implements one screen from the canvas; they can run in parallel on
 
 #### Out of scope and open points
 Out of scope: new features, API changes, a dark mode and real-time updates (E8-S2 stays skipped).
-- **UI language** – the canvas shows German copy, while README, code and tests are English. One language has to be
-  decided, or i18n becomes its own story.
+- **UI language** – settled: the interface stays **English**, like the README, the code, the API messages and the tests.
+  The German copy on the canvas is read as a sketch, not as wording.
 - **Booking number** – the design shows "Booking #142"; it has to be settled whether the plain id is shown or a
   formatted reference.
-- **Icon source** – inline SVGs or an icon package; picked in E11-S2.
+- **Icon source** – settled: **own inline SVGs** (24 px grid, 2 px stroke), no icon package.
 
 ### Future ideas
 Dock attributes (e.g. refrigeration) · Utilization statistics per dock/weekday · iCal export for suppliers · Multiple users per supplier company.
