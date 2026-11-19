@@ -4,6 +4,7 @@ namespace App\Actions\Bookings;
 
 use App\Data\Slot;
 use App\Enums\BookingStatus;
+use App\Mail\BookingChanged;
 use App\Models\Booking;
 use App\Models\CalendarDay;
 use App\Models\Dock;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class RescheduleBooking
 {
@@ -43,7 +45,22 @@ class RescheduleBooking
     ): Booking {
         $this->bookingChangeGuard->denyAChangeToABookingThatIsNoLongerOpen($booking, 'changed');
 
-        return $this->planTheChange($user, $booking, $startsAt, $pallets, $reason);
+        $movedFrom = $this->getStartOf($booking);
+
+        $changed = $this->planTheChange($user, $booking, $startsAt, $pallets, $reason);
+
+        $this->tellTheSupplier($changed, $movedFrom, $reason);
+
+        return $changed;
+    }
+
+    private function tellTheSupplier(Booking $booking, CarbonImmutable $movedFrom, ?string $reason): void
+    {
+        $user = $booking->getSupplierUser();
+
+        if ($user instanceof User) {
+            Mail::to($user)->send(new BookingChanged($booking, $movedFrom, $reason));
+        }
     }
 
     private function planTheChange(
