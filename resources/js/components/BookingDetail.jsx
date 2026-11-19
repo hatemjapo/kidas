@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import api, { csrf } from '../lib/api';
 import { formatDate, formatDateTime, formatTime } from '../lib/datetime';
+import DockStatus from './DockStatus';
 import SlotPicker from './SlotPicker';
 import StatusBadge from './StatusBadge';
 
@@ -102,6 +103,8 @@ export default function BookingDetail({ booking, onBack, onChanged }) {
                 <dt className="text-slate-500">Driver phone</dt>
                 <dd>{booking.driver_phone}</dd>
             </dl>
+
+            <DockStatus booking={booking} />
 
             {booking.status === 'booked' && action === 'none' && (
                 <div className="flex items-center gap-3">

@@ -28,28 +28,28 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::middleware('role:staff,admin')->group(function (): void {
         Route::get('/schedule', [ScheduleController::class, 'show'])->name('api.schedule.show');
 
-        Route::post('/bookings/{booking}/arrival', [ArrivalController::class, 'store'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/arrival', [ArrivalController::class, 'store'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.arrival');
 
-        Route::patch('/bookings/{booking}/arrival', [ArrivalController::class, 'update'])
-            ->whereNumber('booking')
+        Route::patch('/bookings/{bookingId}/arrival', [ArrivalController::class, 'update'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.arrival.update');
 
-        Route::post('/bookings/{booking}/plate-verification', [ArrivalController::class, 'verify'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/plate-verification', [ArrivalController::class, 'verify'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.plate-verification');
 
-        Route::post('/bookings/{booking}/handling', [HandlingController::class, 'store'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/handling', [HandlingController::class, 'store'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.handling');
 
-        Route::post('/bookings/{booking}/completion', [HandlingController::class, 'complete'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/completion', [HandlingController::class, 'complete'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.completion');
 
-        Route::post('/bookings/{booking}/no-show', [NoShowController::class, 'store'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/no-show', [NoShowController::class, 'store'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.no-show');
     });
 
@@ -62,12 +62,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::post('/admin/bookings', [AdminBookingController::class, 'store'])->name('api.admin.bookings.store');
 
-        Route::patch('/admin/bookings/{booking}', [AdminBookingController::class, 'update'])
-            ->whereNumber('booking')
+        Route::patch('/admin/bookings/{bookingId}', [AdminBookingController::class, 'update'])
+            ->whereNumber('bookingId')
             ->name('api.admin.bookings.update');
 
-        Route::post('/admin/bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])
-            ->whereNumber('booking')
+        Route::post('/admin/bookings/{bookingId}/cancel', [AdminBookingController::class, 'cancel'])
+            ->whereNumber('bookingId')
             ->name('api.admin.bookings.cancel');
     });
 
@@ -81,16 +81,20 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/bookings', [BookingController::class, 'index'])->name('api.bookings.index');
         Route::post('/bookings', [BookingController::class, 'store'])->name('api.bookings.store');
-        Route::get('/bookings/{booking}', [BookingController::class, 'show'])
-            ->whereNumber('booking')
+        Route::get('/bookings/{bookingId}', [BookingController::class, 'show'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.show');
 
-        Route::patch('/bookings/{booking}', [BookingController::class, 'update'])
-            ->whereNumber('booking')
+        Route::get('/bookings/{bookingId}/status', [BookingController::class, 'status'])
+            ->whereNumber('bookingId')
+            ->name('api.bookings.status');
+
+        Route::patch('/bookings/{bookingId}', [BookingController::class, 'update'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.update');
 
-        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])
-            ->whereNumber('booking')
+        Route::post('/bookings/{bookingId}/cancel', [BookingController::class, 'cancel'])
+            ->whereNumber('bookingId')
             ->name('api.bookings.cancel');
 
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('api.vehicles.index');
