@@ -72,7 +72,7 @@ test('says that the registration is being reviewed', async () => {
     fillIn();
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-        'We are reviewing your registration.'
+        'The warehouse is checking your registration.'
     );
     expect(screen.queryByRole('button', { name: 'Register' })).not.toBeInTheDocument();
 });
@@ -115,4 +115,25 @@ test('marks every field as required', () => {
     ['Company', 'Company phone', 'Your name', 'Email', 'Password', 'Repeat password'].forEach(
         (label) => expect(screen.getByLabelText(label)).toBeRequired()
     );
+});
+
+test('wears the same layout as the sign-in page', () => {
+    renderRegister();
+
+    expect(screen.getByRole('heading', { name: 'Register as a supplier', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Every lorry at the right dock/, level: 2 })).toBeInTheDocument();
+});
+
+test('says who approves the registration', () => {
+    renderRegister();
+
+    expect(screen.getByText(/approves every registration by hand/)).toBeInTheDocument();
+});
+
+test('marks every field as required', () => {
+    renderRegister();
+
+    ['Company', 'Company phone', 'Your name', 'Email', 'Password', 'Repeat password'].forEach((label) => {
+        expect(screen.getByLabelText(label)).toBeRequired();
+    });
 });

@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
+import AuthLayout from '../layouts/AuthLayout';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import InfoBox from '../components/ui/InfoBox';
+import TextField from '../components/ui/TextField';
 
 export default function Login() {
     const { user, loading, login } = useAuth();
@@ -43,74 +48,60 @@ export default function Login() {
     }
 
     return (
-        <div className="flex min-h-full items-center justify-center px-6 py-16">
-            <div className="w-full max-w-sm">
-                <h1 className="text-lg font-semibold tracking-tight">Sign in to KiDas</h1>
+        <AuthLayout
+            title="Sign in"
+            lead="Sign in with your email address."
+            aside={
+                <>
+                    <hr className="mt-8 border-line" />
 
-                {message && (
-                    <p
-                        role="alert"
-                        className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                    >
-                        {message}
+                    <p className="mt-6 text-sm text-muted">
+                        No account yet?{' '}
+                        <Link to="/register" className="font-semibold text-brand-700 hover:text-brand-800">
+                            Register as a supplier
+                        </Link>
                     </p>
-                )}
 
-                <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="email" className="text-sm font-medium text-slate-700 after:ml-0.5 after:text-red-600 after:content-['*']">
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            autoComplete="username"
-                            required
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {errors.email && (
-                            <p className="text-sm text-red-600">{errors.email[0]}</p>
-                        )}
-                    </div>
+                    <InfoBox className="mt-4">
+                        New registrations are checked by the warehouse. Once yours is approved you will get an email
+                        with a link to sign in.
+                    </InfoBox>
+                </>
+            }
+        >
+            {message && <Alert className="mt-4">{message}</Alert>}
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="password" className="text-sm font-medium text-slate-700 after:ml-0.5 after:text-red-600 after:content-['*']">
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autoComplete="current-password"
-                            required
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {errors.password && (
-                            <p className="text-sm text-red-600">{errors.password[0]}</p>
-                        )}
-                    </div>
+            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
+                <TextField
+                    id="email"
+                    name="email"
+                    type="email"
+                    label="Email"
+                    placeholder="name@company.test"
+                    autoComplete="username"
+                    required
+                    error={errors.email?.[0]}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                />
 
-                    <button
-                        type="submit"
-                        disabled={submitting}
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                        {submitting ? 'Signing in…' : 'Sign in'}
-                    </button>
-                </form>
+                <TextField
+                    id="password"
+                    name="password"
+                    type="password"
+                    label="Password"
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    required
+                    error={errors.password?.[0]}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
 
-                <p className="mt-6 text-sm text-slate-500">
-                    New supplier?{' '}
-                    <Link to="/register" className="font-medium text-slate-900 underline">
-                        Register your company
-                    </Link>
-                </p>
-            </div>
-        </div>
+                <Button type="submit" loading={submitting} className="mt-2 w-full">
+                    {submitting ? 'Signing in…' : 'Sign in'}
+                </Button>
+            </form>
+        </AuthLayout>
     );
 }
