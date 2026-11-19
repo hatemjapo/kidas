@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Bookings\CancelBooking;
 use App\Actions\Bookings\CreateBooking;
 use App\Actions\Bookings\RescheduleBooking;
 use App\Data\NewBooking;
 use App\Enums\DockUsage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\AdminRescheduleBookingRequest;
+use App\Http\Requests\Api\CancelBookingRequest;
 use App\Http\Requests\Api\StoreAdminBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
@@ -56,6 +58,20 @@ class AdminBookingController extends Controller
         );
 
         return new BookingResource($changed->load('dock'));
+    }
+
+    public function cancel(CancelBookingRequest $request, int $booking, CancelBooking $cancelBooking): BookingResource
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $cancelled = $cancelBooking->cancelBookingForAdmin(
+            $user,
+            Booking::getBookingForWarehouse($booking),
+            $request->input('reason') === null ? null : $request->string('reason')->toString(),
+        );
+
+        return new BookingResource($cancelled->load('dock'));
     }
 
     private function getLicensePlate(StoreAdminBookingRequest $request, Supplier $supplier): string

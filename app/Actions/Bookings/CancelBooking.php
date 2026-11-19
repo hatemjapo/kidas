@@ -21,6 +21,13 @@ class CancelBooking
         return DB::transaction(fn (): Booking => $this->storeCancellation($user, $booking, $reason));
     }
 
+    public function cancelBookingForAdmin(User $user, Booking $booking, ?string $reason): Booking
+    {
+        $this->bookingChangeGuard->denyAChangeToABookingThatIsNoLongerOpen($booking, 'cancelled');
+
+        return DB::transaction(fn (): Booking => $this->storeCancellation($user, $booking, $reason));
+    }
+
     private function storeCancellation(User $user, Booking $booking, ?string $reason): Booking
     {
         $booking->status = BookingStatus::Cancelled;

@@ -525,3 +525,59 @@ test('shows why a change was refused', async () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('has just been taken');
 });
+
+test('offers the admin to cancel a booking', () => {
+    renderAsAdmin(awaited);
+
+    expect(screen.getByRole('button', { name: 'Cancel this booking' })).toBeInTheDocument();
+});
+
+test('leaves the cancellation to the admin', () => {
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Cancel this booking' })).not.toBeInTheDocument();
+});
+
+test('asks before a booking is cancelled', async () => {
+    api.post.mockResolvedValue({ data: { data: { ...awaited, status: 'cancelled' } } });
+
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
+
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Reason (optional)'), { target: { value: 'Dock out of service' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
+
+    await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith('/admin/bookings/7/cancel', { reason: 'Dock out of service' })
+    );
+});
+
+test('cancels without a reason', async () => {
+    api.post.mockResolvedValue({ data: { data: { ...awaited, status: 'cancelled' } } });
+
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/admin/bookings/7/cancel', { reason: null }));
+});
+
+test('lets the booking be kept', () => {
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    expect(screen.getByRole('button', { name: 'Cancel this booking' })).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+});
+
+test('offers no cancellation once the lorry is there', () => {
+    renderAsAdmin({ ...awaited, status: 'arrived', arrived_plate: 'HHAB1234' });
+
+    expect(screen.queryByRole('button', { name: 'Cancel this booking' })).not.toBeInTheDocument();
+});

@@ -13,6 +13,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
     const [releasing, setReleasing] = useState(false);
     const [marking, setMarking] = useState(false);
     const [changing, setChanging] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
     const [pallets, setPallets] = useState(booking.pallets);
     const [reason, setReason] = useState('');
     const [errors, setErrors] = useState({});
@@ -35,6 +36,12 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
         );
 
         setChanging(false);
+    }
+
+    async function cancelBooking() {
+        await send(`/admin/bookings/${booking.id}/cancel`, { reason: reason === '' ? null : reason });
+
+        setCancelling(false);
     }
 
     async function send(url, payload, request = api.post) {
@@ -175,15 +182,65 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                 </form>
             )}
 
-            {mayChangeTheBooking && ! changing && (
-                <button
-                    type="button"
-                    disabled={working}
-                    onClick={() => setChanging(true)}
-                    className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                >
-                    Change this booking
-                </button>
+            {mayChangeTheBooking && ! changing && ! cancelling && (
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        disabled={working}
+                        onClick={() => setChanging(true)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                    >
+                        Change this booking
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={working}
+                        onClick={() => setCancelling(true)}
+                        className="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
+                    >
+                        Cancel this booking
+                    </button>
+                </div>
+            )}
+
+            {mayChangeTheBooking && cancelling && (
+                <div className="space-y-3 rounded-md border border-red-300 bg-red-50 p-3">
+                    <p className="text-sm text-red-900">
+                        Cancel this booking? The slot is then free for somebody else.
+                    </p>
+
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="cancel_reason" className="text-sm font-medium text-red-900">
+                            Reason (optional)
+                        </label>
+                        <input
+                            id="cancel_reason"
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            className="rounded-md border border-red-300 px-3 py-2 text-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            disabled={working}
+                            onClick={cancelBooking}
+                            className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                            Yes, cancel it
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setCancelling(false)}
+                            className="text-sm font-medium text-slate-600 hover:underline"
+                        >
+                            Keep it
+                        </button>
+                    </div>
+                </div>
             )}
 
             {mayChangeTheBooking && changing && (
