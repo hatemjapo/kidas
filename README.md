@@ -31,11 +31,26 @@ cp .env.example .env
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate
+./vendor/bin/sail artisan db:seed
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 ```
 
 The application is then available at **http://localhost:8080**.
+
+### Demo logins
+
+`db:seed` fills the database with something to look at: the coming two weeks are released (weekends stay shut), docks 8 to 10 serve pickups, and there are bookings in every state the application knows. Today is laid out around the current hour — a lorry at a dock right now, the next one waiting behind it, one that was handled earlier and one that never turned up — so the warehouse timeline and the live status on a booking have something to show. The password is `password` for all of them:
+
+| Login | Role |
+|---|---|
+| `admin@kidas.test` | admin: books for suppliers, changes and cancels bookings, keeps the days in the panel |
+| `staff@kidas.test` | warehouse: the dock schedule, arrivals, handling, no-shows |
+| `nordfracht@kidas.test` | supplier, approved |
+| `aalbert@kidas.test` | supplier, approved |
+| `neuhaus@kidas.test` | supplier, still waiting for approval — cannot sign in yet |
+
+Seeding again replaces the demo bookings instead of adding a second set, so the data stays current without a fresh database. It only touches what it created itself.
 
 Ports are set in `.env`: the app uses `APP_PORT=8080` and PostgreSQL is forwarded to host port `FORWARD_DB_PORT=5433`, because 80 and 5432 are often already taken on a development machine. Adjust both values if they clash with something on your system.
 
@@ -217,4 +232,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, **E6-S1** – the warehouse timeline, **E6-S2** – registering an arrival, **E6-S3** – handling a lorry and releasing the dock, **E6-S4** – the no-show, **E7-S1** – the admin booking for a supplier, **E7-S2** – the admin changing a booking, **E7-S3** – the admin cancelling one, **E7-S4** – the mails that tell the supplier, and **E8-S1** – the live dock status. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, **E6-S1** – the warehouse timeline, **E6-S2** – registering an arrival, **E6-S3** – handling a lorry and releasing the dock, **E6-S4** – the no-show, **E7-S1** – the admin booking for a supplier, **E7-S2** – the admin changing a booking, **E7-S3** – the admin cancelling one, **E7-S4** – the mails that tell the supplier, **E8-S1** – the live dock status, and **E9-S1** – the demo data. E8-S2 (real time over WebSockets) was skipped on purpose: polling is enough at this size, and Reverb would add a second process to run. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
