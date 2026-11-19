@@ -24,6 +24,28 @@ export default function Book() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
+        if (booksForSomebodyElse) {
+            return undefined;
+        }
+
+        let active = true;
+
+        api.get('/profile')
+            .then((response) => {
+                const profile = response.data.data ?? response.data;
+
+                if (active && typeof profile.driver_phone === 'string') {
+                    setDetails((details) => ({ ...details, driver_phone: profile.driver_phone }));
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [booksForSomebodyElse]);
+
+    useEffect(() => {
         if (! booksForSomebodyElse) {
             return undefined;
         }

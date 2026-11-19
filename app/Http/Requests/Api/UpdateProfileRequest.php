@@ -15,6 +15,7 @@ class UpdateProfileRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['required', 'string', 'max:255'],
             'company_phone' => ['required', 'string', 'max:50'],
+            'driver_phone' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

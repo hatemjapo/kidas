@@ -30,7 +30,13 @@ beforeEach(() => {
     );
 });
 
-async function renderProfile() {
+async function renderProfile(answer = profile) {
+    api.get.mockImplementation((url) =>
+        url === '/vehicles'
+            ? Promise.resolve({ data: { data: [] } })
+            : Promise.resolve({ data: { data: answer } })
+    );
+
     render(<Profile />);
 
     await waitFor(() => expect(screen.getByLabelText('Company')).toHaveValue('Nordfracht GmbH'));
@@ -65,6 +71,7 @@ test('sends the changed values behind a csrf cookie', async () => {
             name: 'Lena Supplier',
             company_name: 'Nordfracht GmbH',
             company_phone: '+49 40 7654321',
+            driver_phone: null,
         })
     );
 
@@ -100,4 +107,31 @@ test('says so when the profile cannot be loaded', async () => {
     render(<Profile />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
+});
+
+test('keeps a default driver phone for the next booking', async () => {
+    api.patch.mockResolvedValue({ data: { data: profile } });
+
+    await renderProfile();
+
+    const field = screen.getByLabelText('Default driver phone');
+
+    expect(field).not.toBeRequired();
+    expect(screen.getByText(/prefilled with this number/)).toBeInTheDocument();
+
+    fireEvent.change(field, { target: { value: '+49 170 1234567' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+        expect(api.patch).toHaveBeenCalledWith(
+            '/profile',
+            expect.objectContaining({ driver_phone: '+49 170 1234567' })
+        )
+    );
+});
+
+test('shows the number that was kept', async () => {
+    await renderProfile({ ...profile, driver_phone: '+49 170 1234567' });
+
+    expect(screen.getByLabelText('Default driver phone')).toHaveValue('+49 170 1234567');
 });

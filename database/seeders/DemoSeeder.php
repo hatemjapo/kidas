@@ -78,6 +78,7 @@ class DemoSeeder extends Seeder
         $supplier->user_id = $user->id;
         $supplier->company_name = $company;
         $supplier->company_phone = '+49 40 123456';
+        $supplier->driver_phone = '+49 170 1234567';
         $supplier->status = $status;
         $supplier->save();
 

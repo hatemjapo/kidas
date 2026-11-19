@@ -189,6 +189,9 @@ paths:
                   type: string
                 company_phone:
                   type: string
+                driver_phone:
+                  type: string
+                  nullable: true
       responses:
         '200':
           description: The profile as it now stands.
@@ -1018,6 +1021,10 @@ components:
           type: string
         company_phone:
           type: string
+        driver_phone:
+          type: string
+          nullable: true
+          description: The number a booking is prefilled with; a booking may carry another one.
         status:
           type: string
           enum:

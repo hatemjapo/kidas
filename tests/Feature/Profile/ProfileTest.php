@@ -2,8 +2,10 @@
 
 use App\Enums\SupplierStatus;
 use App\Enums\UserRole;
+use App\Models\Booking;
 use App\Models\Supplier;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\getJson;
@@ -127,3 +129,78 @@ test('lets a supplier change only their own profile', function (string $state, b
     'another supplier' => ['supplier', false],
     'warehouse staff' => ['staff', false],
 ]);
+
+test('keeps a default driver phone for the next booking', function () {
+    $supplier = Supplier::factory()->approved()->create();
+
+    actingAs($supplier->user);
+
+    patchJson('/api/v1/profile', [
+        'name' => 'Lena Supplier',
+        'company_name' => 'Nordfracht GmbH',
+        'company_phone' => '+49 40 1234567',
+        'driver_phone' => '+49 170 1234567',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.driver_phone', '+49 170 1234567');
+
+    expect($supplier->refresh()->driver_phone)->toBe('+49 170 1234567');
+});
+
+test('lets the default driver phone be dropped again', function () {
+    $supplier = Supplier::factory()->approved()->create(['driver_phone' => '+49 170 1234567']);
+
+    actingAs($supplier->user);
+
+    patchJson('/api/v1/profile', [
+        'name' => 'Lena Supplier',
+        'company_name' => 'Nordfracht GmbH',
+        'company_phone' => '+49 40 1234567',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.driver_phone', null);
+
+    expect($supplier->refresh()->driver_phone)->toBeNull();
+});
+
+test('refuses a driver phone that is far too long', function () {
+    $supplier = Supplier::factory()->approved()->create();
+
+    actingAs($supplier->user);
+
+    patchJson('/api/v1/profile', [
+        'name' => 'Lena Supplier',
+        'company_name' => 'Nordfracht GmbH',
+        'company_phone' => '+49 40 1234567',
+        'driver_phone' => str_repeat('9', 51),
+    ])->assertStatus(422)->assertJsonValidationErrors('driver_phone');
+});
+
+test('a booking keeps the number it was made with', function () {
+    openedDay();
+    $supplier = Supplier::factory()->approved()->create(['driver_phone' => '+49 170 1234567']);
+
+    CarbonImmutable::setTestNow('2027-06-02 03:00:00');
+
+    actingAs($supplier->user);
+
+    Pest\Laravel\postJson('/api/v1/bookings', [
+        'type' => 'inbound',
+        'pallets' => 10,
+        'starts_at' => '2027-06-02T10:00:00+02:00',
+        'order_number' => 'PO-4711',
+        'driver_phone' => '+49 171 9999999',
+        'license_plate' => 'HHAB1234',
+    ])->assertCreated();
+
+    patchJson('/api/v1/profile', [
+        'name' => 'Lena Supplier',
+        'company_name' => 'Nordfracht GmbH',
+        'company_phone' => '+49 40 1234567',
+        'driver_phone' => '+49 172 0000000',
+    ])->assertOk();
+
+    expect(Booking::query()->firstOrFail()->driver_phone)->toBe('+49 171 9999999');
+
+    CarbonImmutable::setTestNow();
+});
