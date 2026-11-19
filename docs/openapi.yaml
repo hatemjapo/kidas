@@ -1002,6 +1002,10 @@ components:
           - admin
           - staff
           - supplier
+        company_name:
+          type: string
+          nullable: true
+          description: The company of a supplier; null for the warehouse and the admin.
     Profile:
       type: object
       properties:
