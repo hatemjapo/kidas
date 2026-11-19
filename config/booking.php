@@ -64,6 +64,21 @@ return [
 
     'status_poll_seconds' => 30,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rate limits
+    |--------------------------------------------------------------------------
+    |
+    | How many writing requests one account may send per minute. Suppliers and
+    | admins are kept low, because a slot that is taken is taken; the warehouse
+    | works through many lorries a day and needs more room.
+    |
+    */
+
+    'writes_per_minute' => 20,
+
+    'warehouse_actions_per_minute' => 120,
+
     'days_per_page' => 5,
 
     'bookings_per_page' => 20,
