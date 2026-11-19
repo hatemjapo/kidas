@@ -156,3 +156,19 @@ test('says nothing about the status when the password is wrong', function () {
 
     assertGuest();
 });
+
+test('tells the app which company a supplier belongs to', function () {
+    $supplier = Supplier::factory()->approved()->create(['company_name' => 'Nordfracht GmbH']);
+
+    postJson('/api/v1/login', ['email' => $supplier->user->email, 'password' => 'password'])
+        ->assertOk()
+        ->assertJsonPath('data.company_name', 'Nordfracht GmbH');
+});
+
+test('leaves the company empty for the warehouse and the admin', function (string $state) {
+    $user = User::factory()->{$state}()->create();
+
+    postJson('/api/v1/login', ['email' => $user->email, 'password' => 'password'])
+        ->assertOk()
+        ->assertJsonPath('data.company_name', null);
+})->with(['staff', 'admin']);

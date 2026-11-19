@@ -5,6 +5,7 @@ export { default as ChoiceTile } from './ChoiceTile';
 export { default as Dialog, ConfirmDialog } from './Dialog';
 export { default as IconButton } from './IconButton';
 export { default as InfoBox } from './InfoBox';
+export { default as Logo } from './Logo';
 export { default as NumberField } from './NumberField';
 export { default as SegmentedControl } from './SegmentedControl';
 export { default as Select } from './Select';
