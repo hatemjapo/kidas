@@ -1,12 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 
+vi.mock('../../resources/js/auth/AuthContext', () => ({
+    useAuth: vi.fn(),
+}));
+
 vi.mock('../../resources/js/lib/api', () => ({
     default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
     csrf: vi.fn(),
 }));
 
 const api = (await import('../../resources/js/lib/api')).default;
+const { useAuth } = await import('../../resources/js/auth/AuthContext');
 const { default: Schedule } = await import('../../resources/js/pages/Schedule');
 
 function dock(number, bookings = [], isActive = true) {
@@ -47,6 +52,8 @@ function schedule(docks, overrides = {}) {
 
 beforeEach(() => {
     vi.setSystemTime(new Date('2027-06-02T09:00:00Z'));
+
+    useAuth.mockReturnValue({ role: 'staff' });
 
     api.get.mockReset();
     api.get.mockResolvedValue(schedule([dock(1, [booking]), dock(2), dock(3, [], false)]));

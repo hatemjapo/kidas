@@ -154,14 +154,14 @@ test('says so when the bookings cannot be loaded', async () => {
 test('offers moving and cancelling while a booking is merely booked', async () => {
     await openDetail();
 
-    expect(screen.getByRole('button', { name: 'Move this booking' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change this booking' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel this booking' })).toBeInTheDocument();
 });
 
 test('offers neither on a cancelled booking', async () => {
     await openDetail({ ...detail, status: 'cancelled' });
 
-    expect(screen.queryByRole('button', { name: 'Move this booking' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change this booking' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel this booking' })).not.toBeInTheDocument();
 });
 
@@ -226,7 +226,7 @@ test('moves a booking to a slot that was picked', async () => {
         data: { data: { ...detail, starts_at: '2027-06-04T08:00:00Z', ends_at: '2027-06-04T08:15:00Z' } },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
 
     fireEvent.click(await screen.findByRole('button', { name: '10:00' }));
 
@@ -243,7 +243,7 @@ test('takes a new pallet count along when moving', async () => {
 
     api.patch.mockResolvedValue({ data: { data: detail } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
     fireEvent.change(screen.getByLabelText('Pallets'), { target: { value: '30' } });
 
     fireEvent.click(await screen.findByRole('button', { name: '10:00' }));
@@ -260,7 +260,7 @@ test('shows why a move was refused', async () => {
         response: { status: 409, data: { message: 'This slot has just been taken. Please pick another one.' } },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
     fireEvent.click(await screen.findByRole('button', { name: '10:00' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('has just been taken');
