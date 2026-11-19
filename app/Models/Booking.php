@@ -53,6 +53,11 @@ class Booking extends Model
         return self::query()->with(['dock', 'supplier'])->findOrFail($bookingId);
     }
 
+    public function getSupplierUser(): ?User
+    {
+        return $this->supplier?->user;
+    }
+
     public function hasAnUnverifiedPlateMismatch(): bool
     {
         return $this->plate_mismatch && $this->plate_verified_by === null;

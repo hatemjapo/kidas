@@ -31,10 +31,13 @@ class PlanSlot
         return $day;
     }
 
-    public function getSlotForStart(CalendarDay $day, DockUsage $usage, CarbonImmutable $startsAt, int $durationMinutes): Slot
-    {
-        $notBefore = CarbonImmutable::now()->addHours((int) config('booking.lead_time_hours'));
-
+    public function getSlotForStart(
+        CalendarDay $day,
+        DockUsage $usage,
+        CarbonImmutable $startsAt,
+        int $durationMinutes,
+        CarbonImmutable $notBefore,
+    ): Slot {
         foreach (Shift::cases() as $shift) {
             if ($day->getActiveDockIdsForShiftAndUsage($shift, $usage) === []) {
                 continue;

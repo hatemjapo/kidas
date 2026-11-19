@@ -20,6 +20,7 @@ class CreateBooking
     public function __construct(
         private readonly DurationForPallets $durationForPallets,
         private readonly PlanSlot $planSlot,
+        private readonly LeadTime $leadTime,
         private readonly ManageVehicles $manageVehicles,
         private readonly LogBookingEvent $logBookingEvent,
     ) {}
@@ -29,7 +30,13 @@ class CreateBooking
         $durationMinutes = $this->durationForPallets->getMinutesForPallets($wanted->pallets);
 
         $day = $this->planSlot->getBookableDayForStart($wanted->startsAt);
-        $slot = $this->planSlot->getSlotForStart($day, $wanted->usage, $wanted->startsAt, $durationMinutes);
+        $slot = $this->planSlot->getSlotForStart(
+            $day,
+            $wanted->usage,
+            $wanted->startsAt,
+            $durationMinutes,
+            $this->leadTime->getEarliestStartForUser($user),
+        );
 
         $this->rememberVehicle($supplier, $wanted->licensePlate);
 

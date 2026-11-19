@@ -110,7 +110,7 @@ export default function BookingDetail({ booking, onBack, onChanged }) {
                         onClick={() => setAction('move')}
                         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium"
                     >
-                        Move this booking
+                        Change this booking
                     </button>
 
                     <button
@@ -163,7 +163,7 @@ export default function BookingDetail({ booking, onBack, onChanged }) {
 
             {action === 'move' && (
                 <section className="space-y-3 rounded-md border border-slate-200 p-4">
-                    <h2 className="text-base font-semibold">Move this booking</h2>
+                    <h2 className="text-base font-semibold">Change this booking</h2>
 
                     <div className="flex flex-col gap-1">
                         <label htmlFor="move_pallets" className="text-sm font-medium text-slate-700">

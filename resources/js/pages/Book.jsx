@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import SlotPicker from '../components/SlotPicker';
+import { useAuth } from '../auth/AuthContext';
 import api, { csrf } from '../lib/api';
 import { formatDate, formatTime } from '../lib/datetime';
 
 export default function Book() {
+    const { role } = useAuth();
+    const booksForSomebodyElse = role === 'admin';
+
+    const [suppliers, setSuppliers] = useState([]);
+    const [supplierId, setSupplierId] = useState('');
     const [step, setStep] = useState('load');
     const [type, setType] = useState('inbound');
     const [pallets, setPallets] = useState(10);
@@ -18,9 +24,41 @@ export default function Book() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
+        if (! booksForSomebodyElse) {
+            return undefined;
+        }
+
         let active = true;
 
-        api.get('/vehicles')
+        api.get('/suppliers')
+            .then((response) => {
+                if (active) {
+                    setSuppliers(response.data.data ?? []);
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setSuppliers([]);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [booksForSomebodyElse]);
+
+    useEffect(() => {
+        if (booksForSomebodyElse && supplierId === '') {
+            setVehicles([]);
+
+            return undefined;
+        }
+
+        let active = true;
+
+        const path = booksForSomebodyElse ? `/suppliers/${supplierId}/vehicles` : '/vehicles';
+
+        api.get(path)
             .then((response) => {
                 if (active) {
                     setVehicles(response.data.data ?? []);
@@ -35,7 +73,7 @@ export default function Book() {
         return () => {
             active = false;
         };
-    }, []);
+    }, [booksForSomebodyElse, supplierId]);
 
     function pickSlot(picked) {
         setSlot(picked);
@@ -53,7 +91,8 @@ export default function Book() {
         try {
             await csrf();
 
-            const response = await api.post('/bookings', {
+            const response = await api.post(booksForSomebodyElse ? '/admin/bookings' : '/bookings', {
+                ...(booksForSomebodyElse ? { supplier_id: Number(supplierId) } : {}),
                 type,
                 pallets,
                 starts_at: slot.starts_at,
@@ -129,6 +168,39 @@ export default function Book() {
             )}
 
             <section className="flex flex-wrap items-end gap-4">
+                {booksForSomebodyElse && (
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="supplier_id" className="text-sm font-medium text-slate-700">
+                            Supplier
+                        </label>
+                        <select
+                            id="supplier_id"
+                            value={supplierId}
+                            onChange={(event) => {
+                                setSupplierId(event.target.value);
+                                setDetails({
+                                    order_number: '',
+                                    driver_phone: '',
+                                    vehicle_id: '',
+                                    license_plate: '',
+                                });
+                                setStep('load');
+                            }}
+                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        >
+                            <option value="">Please choose</option>
+                            {suppliers.map((supplier) => (
+                                <option key={supplier.id} value={supplier.id}>
+                                    {supplier.company_name}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.supplier_id && (
+                            <p className="text-sm text-red-600">{errors.supplier_id[0]}</p>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-1">
                     <label htmlFor="type" className="text-sm font-medium text-slate-700">
                         I want to
@@ -167,11 +239,12 @@ export default function Book() {
 
                 <button
                     type="button"
+                    disabled={booksForSomebodyElse && supplierId === ''}
                     onClick={() => {
                         setPickerKey((key) => key + 1);
                         setStep('slot');
                     }}
-                    className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+                    className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
                     Show free slots
                 </button>

@@ -81,6 +81,11 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/bookings/{id}` | one booking with its history, `404` for a foreign one |
 | `PATCH` | `/api/v1/bookings/{id}` | moves a booking to another time or pallet count |
 | `POST` | `/api/v1/bookings/{id}/cancel` | cancels a booking, reason optional |
+| `GET` | `/api/v1/suppliers` | the approved suppliers, for the admin |
+| `GET` | `/api/v1/suppliers/{id}/vehicles` | the plates one supplier has saved |
+| `POST` | `/api/v1/admin/bookings` | the admin books for a supplier |
+| `PATCH` | `/api/v1/admin/bookings/{id}` | the admin changes a booking of any supplier |
+| `POST` | `/api/v1/admin/bookings/{id}/cancel` | the admin cancels a booking of any supplier |
 | `GET` | `/api/v1/schedule?date=` | the warehouse timeline of one day |
 | `POST` | `/api/v1/bookings/{id}/arrival` | the warehouse registers an arrival |
 | `PATCH` | `/api/v1/bookings/{id}/arrival` | the warehouse corrects the plate that was typed |
@@ -134,6 +139,12 @@ A supplier keeps their own profile at `/profile` in the app: company, company ph
 The same page keeps the supplier's license plates. Whatever is typed is reduced to letters and digits in upper case, so `hh-ab 1234` is stored as `HHAB1234` and cannot be saved twice in another spelling. Two suppliers may well keep the same lorry, so the plates are unique per supplier rather than globally. Normalizing happens on the model, not only in the request, because the warehouse will compare a plate against a booking later.
 
 ### Finding a slot
+
+The admin books on the same page a supplier books on, with one field in front: whom the slot is for. The rest of the form is the one the supplier sees, so a plate can be picked from the ones that supplier has saved or typed anew, and a new one is remembered for them as usual — a vehicle belonging to somebody else is refused. The booking then belongs to that supplier: it stands in their list, they can move or cancel it, and the admin is only recorded as the one who made it.
+
+What the admin is free of is the three hours of lead time; everything else still holds, so a day that was never released stays shut and a delivery still needs an inbound dock. The lead time lives in one place, `LeadTime::getEarliestStartForUser()`, which is also what the slot search asks, so the admin is offered start times a supplier is not. One consequence is worth knowing: a slot the admin books for the next hour is already past the supplier's own deadline, so that supplier can no longer move or cancel it themselves. For those cases the admin can change the booking afterwards: a new start time, another pallet count, or both, with an optional reason that goes into the history next to the old and the new time. It is the same planning as everywhere else — the pallet count sets the duration, so changing only the pallets moves the end of the slot and can land the lorry on another dock. Which is why the whole thing is called a change rather than a move, on both sides. A booking whose lorry has already arrived is not changed by anyone. The same dialog cancels a booking, with the same optional reason, which is kept on the booking and in its history; the slot is free again right away and the booking leaves the timeline.
+
+Both of those reach the supplier by email: one mail names the old and the new time, the dock, the pallets and the reason, the other the slot that is gone and where to book a new one. The old time is read before the booking is replanned, which is the whole point of sending it, and a reason the admin typed is escaped before it goes into the mail. A supplier who changes or cancels their own booking is told nothing — they already know. The mails go out directly rather than through the queue, because no worker runs here yet; making them queued later is one interface on the mailable.
 
 A supplier says what they want — inbound or outbound — and how many pallets they carry; the system answers with the days on which that fits and the start times of each. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
 

@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
+import SlotPicker from './SlotPicker';
+import { useAuth } from '../auth/AuthContext';
 import api, { csrf } from '../lib/api';
 import { formatTime } from '../lib/datetime';
 import StatusBadge from './StatusBadge';
 
 export default function ArrivalPanel({ booking, onDone, onClose }) {
+    const { role } = useAuth();
+    const mayChangeTheBooking = role === 'admin' && booking.status === 'booked';
     const [plate, setPlate] = useState(booking.arrived_plate ?? '');
     const [note, setNote] = useState('');
     const [releasing, setReleasing] = useState(false);
     const [marking, setMarking] = useState(false);
+    const [changing, setChanging] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
+    const [pallets, setPallets] = useState(booking.pallets);
+    const [reason, setReason] = useState('');
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [working, setWorking] = useState(false);
@@ -16,7 +24,27 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
         setPlate(booking.arrived_plate ?? '');
     }, [booking.arrived_plate]);
 
-    async function send(path, payload, request = api.post) {
+    async function changeBooking(startsAt) {
+        await send(
+            `/admin/bookings/${booking.id}`,
+            {
+                starts_at: startsAt,
+                pallets,
+                reason: reason === '' ? null : reason,
+            },
+            api.patch
+        );
+
+        setChanging(false);
+    }
+
+    async function cancelBooking() {
+        await send(`/admin/bookings/${booking.id}/cancel`, { reason: reason === '' ? null : reason });
+
+        setCancelling(false);
+    }
+
+    async function send(url, payload, request = api.post) {
         setErrors({});
         setMessage(null);
         setWorking(true);
@@ -24,7 +52,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
         try {
             await csrf();
 
-            const response = await request(`/bookings/${booking.id}/${path}`, payload);
+            const response = await request(url, payload);
 
             onDone(response.data.data ?? response.data);
         } catch (failure) {
@@ -78,9 +106,9 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                         event.preventDefault();
 
                         if (booking.status === 'booked') {
-                            send('arrival', { license_plate: plate });
+                            send(`/bookings/${booking.id}/arrival`, { license_plate: plate });
                         } else {
-                            send('arrival', { license_plate: plate }, api.patch);
+                            send(`/bookings/${booking.id}/arrival`, { license_plate: plate }, api.patch);
                         }
                     }}
                     className="flex flex-wrap items-end gap-3"
@@ -122,7 +150,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                 <form
                     onSubmit={(event) => {
                         event.preventDefault();
-                        send('plate-verification', { note: note === '' ? null : note });
+                        send(`/bookings/${booking.id}/plate-verification`, { note: note === '' ? null : note });
                     }}
                     className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3"
                     noValidate
@@ -154,6 +182,127 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                 </form>
             )}
 
+            {mayChangeTheBooking && ! changing && ! cancelling && (
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        disabled={working}
+                        onClick={() => setChanging(true)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                    >
+                        Change this booking
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={working}
+                        onClick={() => setCancelling(true)}
+                        className="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
+                    >
+                        Cancel this booking
+                    </button>
+                </div>
+            )}
+
+            {mayChangeTheBooking && cancelling && (
+                <div className="space-y-3 rounded-md border border-red-300 bg-red-50 p-3">
+                    <p className="text-sm text-red-900">
+                        Cancel this booking? The slot is then free for somebody else.
+                    </p>
+
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="cancel_reason" className="text-sm font-medium text-red-900">
+                            Reason (optional)
+                        </label>
+                        <input
+                            id="cancel_reason"
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            className="rounded-md border border-red-300 px-3 py-2 text-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            disabled={working}
+                            onClick={cancelBooking}
+                            className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                            Yes, cancel it
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setCancelling(false)}
+                            className="text-sm font-medium text-slate-600 hover:underline"
+                        >
+                            Keep it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {mayChangeTheBooking && changing && (
+                <div className="space-y-3 rounded-md border border-slate-200 p-3">
+                    <h3 className="text-sm font-semibold">Change this booking</h3>
+
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex flex-col gap-1">
+                            <label htmlFor="change_pallets" className="text-sm font-medium text-slate-700">
+                                Pallets
+                            </label>
+                            <input
+                                id="change_pallets"
+                                type="number"
+                                min="1"
+                                max="70"
+                                value={pallets}
+                                onChange={(event) => setPallets(Number(event.target.value))}
+                                className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <label htmlFor="change_reason" className="text-sm font-medium text-slate-700">
+                                Reason (optional)
+                            </label>
+                            <input
+                                id="change_reason"
+                                value={reason}
+                                onChange={(event) => setReason(event.target.value)}
+                                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            disabled={working}
+                            onClick={() => changeBooking(null)}
+                            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                            Keep the time
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setChanging(false)}
+                            className="text-sm font-medium text-slate-600 hover:underline"
+                        >
+                            Leave it
+                        </button>
+                    </div>
+
+                    <p className="text-sm text-slate-500">Or pick another start time:</p>
+
+                    <SlotPicker
+                        type={booking.type}
+                        pallets={pallets}
+                        onPick={(slot) => changeBooking(slot.starts_at)}
+                    />
+                </div>
+            )}
+
             {booking.status === 'booked' && new Date(booking.ends_at) <= new Date() && ! marking && (
                 <button
                     type="button"
@@ -177,7 +326,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                             disabled={working}
                             onClick={() => {
                                 setMarking(false);
-                                send('no-show', {});
+                                send(`/bookings/${booking.id}/no-show`, {});
                             }}
                             className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                         >
@@ -199,7 +348,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                 <button
                     type="button"
                     disabled={working || (booking.plate_mismatch && ! booking.plate_verified)}
-                    onClick={() => send('handling', {})}
+                    onClick={() => send(`/bookings/${booking.id}/handling`, {})}
                     className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
                     Start the handling
@@ -235,7 +384,7 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                             disabled={working}
                             onClick={() => {
                                 setReleasing(false);
-                                send('completion', {});
+                                send(`/bookings/${booking.id}/completion`, {});
                             }}
                             className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                         >

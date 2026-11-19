@@ -4,6 +4,7 @@ namespace App\Actions\Bookings;
 
 use App\Data\Slot;
 use App\Enums\BookingStatus;
+use App\Mail\BookingChanged;
 use App\Models\Booking;
 use App\Models\CalendarDay;
 use App\Models\Dock;
@@ -12,12 +13,14 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class RescheduleBooking
 {
     public function __construct(
         private readonly DurationForPallets $durationForPallets,
         private readonly PlanSlot $planSlot,
+        private readonly LeadTime $leadTime,
         private readonly LogBookingEvent $logBookingEvent,
         private readonly BookingChangeGuard $bookingChangeGuard,
     ) {}
@@ -28,8 +31,45 @@ class RescheduleBooking
         ?CarbonImmutable $startsAt,
         ?int $pallets,
     ): Booking {
-        $this->bookingChangeGuard->denyAChangeThatComesTooLate($booking, 'moved');
+        $this->bookingChangeGuard->denyAChangeThatComesTooLate($booking, 'changed');
 
+        return $this->planTheChange($user, $booking, $startsAt, $pallets, null);
+    }
+
+    public function rescheduleBookingForAdmin(
+        User $user,
+        Booking $booking,
+        ?CarbonImmutable $startsAt,
+        ?int $pallets,
+        ?string $reason,
+    ): Booking {
+        $this->bookingChangeGuard->denyAChangeToABookingThatIsNoLongerOpen($booking, 'changed');
+
+        $movedFrom = $this->getStartOf($booking);
+
+        $changed = $this->planTheChange($user, $booking, $startsAt, $pallets, $reason);
+
+        $this->tellTheSupplier($changed, $movedFrom, $reason);
+
+        return $changed;
+    }
+
+    private function tellTheSupplier(Booking $booking, CarbonImmutable $movedFrom, ?string $reason): void
+    {
+        $user = $booking->getSupplierUser();
+
+        if ($user instanceof User) {
+            Mail::to($user)->send(new BookingChanged($booking, $movedFrom, $reason));
+        }
+    }
+
+    private function planTheChange(
+        User $user,
+        Booking $booking,
+        ?CarbonImmutable $startsAt,
+        ?int $pallets,
+        ?string $reason,
+    ): Booking {
         $wantedStart = $startsAt ?? $this->getStartOf($booking);
         $wantedPallets = $pallets ?? $booking->pallets;
         $movedFrom = $this->describe($this->getStartOf($booking));
@@ -40,15 +80,23 @@ class RescheduleBooking
             $booking->type,
             $wantedStart,
             $this->durationForPallets->getMinutesForPallets($wantedPallets),
+            $this->leadTime->getEarliestStartForUser($user),
         );
 
         return DB::transaction(
-            fn (): Booking => $this->moveBooking($user, $booking, $day, $slot, $wantedPallets, $movedFrom)
+            fn (): Booking => $this->moveBooking($user, $booking, $day, $slot, $wantedPallets, $movedFrom, $reason)
         );
     }
 
-    private function moveBooking(User $user, Booking $booking, CalendarDay $day, Slot $slot, int $pallets, string $movedFrom): Booking
-    {
+    private function moveBooking(
+        User $user,
+        Booking $booking,
+        CalendarDay $day,
+        Slot $slot,
+        int $pallets,
+        string $movedFrom,
+        ?string $reason,
+    ): Booking {
         $dock = $this->planSlot->getFreeDockForSlot($day, $slot, $booking->type, exceptBookingId: $booking->id);
 
         $this->storeMove($booking, $dock, $slot, $pallets);
@@ -58,10 +106,17 @@ class RescheduleBooking
             $user,
             BookingStatus::Booked,
             BookingStatus::Booked,
-            "Moved from {$movedFrom} to {$this->describe($slot->startsAt)}",
+            $this->getNoteForMove($movedFrom, $slot, $reason),
         );
 
         return $booking;
+    }
+
+    private function getNoteForMove(string $movedFrom, Slot $slot, ?string $reason): string
+    {
+        $note = "Moved from {$movedFrom} to {$this->describe($slot->startsAt)}";
+
+        return $reason === null ? $note : "{$note} ({$reason})";
     }
 
     private function storeMove(Booking $booking, Dock $dock, Slot $slot, int $pallets): void

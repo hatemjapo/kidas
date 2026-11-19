@@ -7,10 +7,16 @@ use App\Enums\Shift;
 use App\Models\CalendarDay;
 use App\Models\Dock;
 use App\Models\DockDayUsage;
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 
 use function Pest\Laravel\travelTo;
+
+function supplierUser(): User
+{
+    return User::factory()->supplier()->create();
+}
 
 beforeEach(function () {
     travelTo(CarbonImmutable::parse('2027-06-01 00:30', 'Europe/Berlin'));
@@ -77,7 +83,7 @@ test('hands out the next five bookable days', function () {
         releaseDay(CarbonImmutable::parse('2027-06-01')->addDays($offset)->toDateString());
     }
 
-    $days = app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10);
+    $days = app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
 
     expect(dates($days))->toBe(['2027-06-02', '2027-06-03', '2027-06-04', '2027-06-05', '2027-06-06']);
 });
@@ -88,7 +94,7 @@ test('skips the days that are closed or not released', function () {
     releaseDay('2027-06-04', ['is_released' => false]);
     releaseDay('2027-06-05');
 
-    $days = app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10);
+    $days = app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
 
     expect(dates($days))->toBe(['2027-06-02', '2027-06-05']);
 });
@@ -97,7 +103,7 @@ test('leaves the past behind', function () {
     releaseDay('2027-05-30');
     releaseDay('2027-06-02');
 
-    expect(dates(app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10)))
+    expect(dates(app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10)))
         ->toBe(['2027-06-02']);
 });
 
@@ -108,8 +114,8 @@ test('pages forward without repeating a day', function () {
 
     $finder = app(FindBookableDays::class);
 
-    $first = $finder->getNextBookableDays(DockUsage::Inbound, 10);
-    $second = $finder->getNextBookableDays(DockUsage::Inbound, 10, end($first)->date);
+    $first = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
+    $second = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10, end($first)->date);
 
     expect(dates($second))->toBe(['2027-06-07', '2027-06-08', '2027-06-09', '2027-06-10', '2027-06-11'])
         ->and(array_intersect(dates($first), dates($second)))->toBe([]);
@@ -122,9 +128,9 @@ test('pages back to the days before, in the order of the calendar', function () 
 
     $finder = app(FindBookableDays::class);
 
-    $first = $finder->getNextBookableDays(DockUsage::Inbound, 10);
-    $second = $finder->getNextBookableDays(DockUsage::Inbound, 10, end($first)->date);
-    $back = $finder->getPreviousBookableDays(DockUsage::Inbound, 10, $second[0]->date);
+    $first = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
+    $second = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10, end($first)->date);
+    $back = $finder->getPreviousBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10, $second[0]->date);
 
     expect(dates($back))->toBe(dates($first));
 });
@@ -132,7 +138,8 @@ test('pages back to the days before, in the order of the calendar', function () 
 test('finds nothing before the first bookable day', function () {
     releaseDay('2027-06-02');
 
-    $days = app(FindBookableDays::class)->getPreviousBookableDays(
+    $days = app(FindBookableDays::class)->getPreviousBookableDaysForUser(
+        supplierUser(),
         DockUsage::Inbound,
         10,
         CarbonImmutable::parse('2027-06-02'),
@@ -145,7 +152,7 @@ test('ignores a day that carries the other usage only', function () {
     releaseDay('2027-06-02', usage: DockUsage::Outbound);
     releaseDay('2027-06-03', usage: DockUsage::Inbound);
 
-    expect(dates(app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10)))
+    expect(dates(app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10)))
         ->toBe(['2027-06-03']);
 });
 
@@ -154,13 +161,13 @@ test('ignores the docks that are switched off', function () {
 
     Dock::query()->update(['is_active' => false]);
 
-    expect(app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10))->toBe([]);
+    expect(app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10))->toBe([]);
 });
 
 test('respects the opening hours over the shift times', function () {
     releaseDay('2027-06-02', ['opens_at' => '10:00:00', 'closes_at' => '12:00:00']);
 
-    $days = app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10);
+    $days = app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
 
     expect(times($days[0]))->toBe(['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45']);
 });
@@ -173,7 +180,7 @@ test('never lets a slot run across the change of shift', function () {
         'late_start' => '14:00:00',
     ]);
 
-    $days = app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 20);
+    $days = app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 20);
 
     expect(times($days[0]))->toBe(['13:00', '13:15', '13:30', '14:00', '14:15', '14:30']);
 });
@@ -183,8 +190,8 @@ test('offers fewer start times the fuller the lorry', function () {
 
     $finder = app(FindBookableDays::class);
 
-    $small = $finder->getNextBookableDays(DockUsage::Inbound, 10);
-    $large = $finder->getNextBookableDays(DockUsage::Inbound, 70);
+    $small = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
+    $large = $finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 70);
 
     expect(count(times($small[0])))->toBeGreaterThan(count(times($large[0])));
 });
@@ -194,8 +201,8 @@ test('drops a day on which the lorry no longer fits', function () {
 
     $finder = app(FindBookableDays::class);
 
-    expect(dates($finder->getNextBookableDays(DockUsage::Inbound, 10)))->toBe(['2027-06-02'])
-        ->and($finder->getNextBookableDays(DockUsage::Inbound, 70))->toBe([]);
+    expect(dates($finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10)))->toBe(['2027-06-02'])
+        ->and($finder->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 70))->toBe([]);
 });
 
 test('keeps three hours of distance from now', function () {
@@ -203,7 +210,7 @@ test('keeps three hours of distance from now', function () {
 
     releaseDay('2027-06-02');
 
-    $days = app(FindBookableDays::class)->getNextBookableDays(DockUsage::Inbound, 10);
+    $days = app(FindBookableDays::class)->getNextBookableDaysForUser(supplierUser(), DockUsage::Inbound, 10);
 
     expect(times($days[0])[0])->toBe('11:00');
 });
