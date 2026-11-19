@@ -50,6 +50,20 @@ return [
 
     'change_deadline_hours' => 3,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Live status
+    |--------------------------------------------------------------------------
+    |
+    | How long before a slot a supplier is shown whether the dock is free, and
+    | how often the page asks again while that window is open.
+    |
+    */
+
+    'status_window_minutes' => 15,
+
+    'status_poll_seconds' => 30,
+
     'days_per_page' => 5,
 
     'bookings_per_page' => 20,

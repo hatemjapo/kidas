@@ -11,22 +11,22 @@ use Illuminate\Http\Request;
 
 class HandlingController extends Controller
 {
-    public function store(Request $request, int $booking, HandleBooking $handleBooking): ScheduleBookingResource
+    public function store(Request $request, int $bookingId, HandleBooking $handleBooking): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
-        $started = $handleBooking->startHandlingForBooking($user, Booking::getBookingForWarehouse($booking));
+        $started = $handleBooking->startHandlingForBooking($user, Booking::getBookingForWarehouse($bookingId));
 
         return new ScheduleBookingResource($started);
     }
 
-    public function complete(Request $request, int $booking, HandleBooking $handleBooking): ScheduleBookingResource
+    public function complete(Request $request, int $bookingId, HandleBooking $handleBooking): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
-        $completed = $handleBooking->completeHandlingForBooking($user, Booking::getBookingForWarehouse($booking));
+        $completed = $handleBooking->completeHandlingForBooking($user, Booking::getBookingForWarehouse($bookingId));
 
         return new ScheduleBookingResource($completed);
     }

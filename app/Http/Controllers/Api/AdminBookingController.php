@@ -41,7 +41,7 @@ class AdminBookingController extends Controller
 
     public function update(
         AdminRescheduleBookingRequest $request,
-        int $booking,
+        int $bookingId,
         RescheduleBooking $rescheduleBooking,
     ): BookingResource {
         $user = $request->user();
@@ -51,7 +51,7 @@ class AdminBookingController extends Controller
 
         $changed = $rescheduleBooking->rescheduleBookingForAdmin(
             $user,
-            Booking::getBookingForWarehouse($booking),
+            Booking::getBookingForWarehouse($bookingId),
             $startsAt === null ? null : CarbonImmutable::parse($startsAt)->utc(),
             $request->input('pallets') === null ? null : $request->integer('pallets'),
             $request->input('reason') === null ? null : $request->string('reason')->toString(),
@@ -60,14 +60,14 @@ class AdminBookingController extends Controller
         return new BookingResource($changed->load('dock'));
     }
 
-    public function cancel(CancelBookingRequest $request, int $booking, CancelBooking $cancelBooking): BookingResource
+    public function cancel(CancelBookingRequest $request, int $bookingId, CancelBooking $cancelBooking): BookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
         $cancelled = $cancelBooking->cancelBookingForAdmin(
             $user,
-            Booking::getBookingForWarehouse($booking),
+            Booking::getBookingForWarehouse($bookingId),
             $request->input('reason') === null ? null : $request->string('reason')->toString(),
         );
 

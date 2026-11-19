@@ -11,12 +11,12 @@ use Illuminate\Http\Request;
 
 class NoShowController extends Controller
 {
-    public function store(Request $request, int $booking, MarkNoShow $markNoShow): ScheduleBookingResource
+    public function store(Request $request, int $bookingId, MarkNoShow $markNoShow): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
-        $marked = $markNoShow->markNoShowForBooking($user, Booking::getBookingForWarehouse($booking));
+        $marked = $markNoShow->markNoShowForBooking($user, Booking::getBookingForWarehouse($bookingId));
 
         return new ScheduleBookingResource($marked);
     }

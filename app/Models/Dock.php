@@ -20,6 +20,21 @@ class Dock extends Model
     /** @use HasFactory<DockFactory> */
     use HasFactory;
 
+    public function getBookingThatHoldsTheDockNow(CarbonImmutable $now, int $exceptBookingId): ?Booking
+    {
+        return $this->bookings()
+            ->whereIn('status', [
+                BookingStatus::Booked->value,
+                BookingStatus::Arrived->value,
+                BookingStatus::InProgress->value,
+            ])
+            ->whereKeyNot($exceptBookingId)
+            ->where('starts_at', '<=', $now)
+            ->where('ends_at', '>', $now)
+            ->orderBy('ends_at')
+            ->first();
+    }
+
     /**
      * @return array<string, string>
      */
