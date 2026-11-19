@@ -21,6 +21,7 @@ class ProfileResource extends JsonResource
             'email' => $this->user->email,
             'company_name' => $this->company_name,
             'company_phone' => $this->company_phone,
+            'driver_phone' => $this->driver_phone,
             'status' => $this->status->value,
         ];
     }

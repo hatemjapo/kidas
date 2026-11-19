@@ -93,7 +93,7 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `POST` | `/api/v1/logout` | ends the session |
 | `GET` | `/api/v1/me` | the signed in user, `401` for a guest |
 | `GET` | `/api/v1/profile` | the supplier's own profile |
-| `PATCH` | `/api/v1/profile` | changes company, company phone and contact name |
+| `PATCH` | `/api/v1/profile` | changes company, company phone, contact name and the default driver phone |
 | `GET` | `/api/v1/slots` | the days and start times a booking fits into |
 | `GET` | `/api/v1/bookings` | the supplier's own bookings, page by page |
 | `POST` | `/api/v1/bookings` | books one of those start times |
@@ -165,6 +165,10 @@ The admin books on the same page a supplier books on, with one field in front: w
 What the admin is free of is the three hours of lead time; everything else still holds, so a day that was never released stays shut and a delivery still needs an inbound dock. The lead time lives in one place, `LeadTime::getEarliestStartForUser()`, which is also what the slot search asks, so the admin is offered start times a supplier is not. One consequence is worth knowing: a slot the admin books for the next hour is already past the supplier's own deadline, so that supplier can no longer move or cancel it themselves. For those cases the admin can change the booking afterwards: a new start time, another pallet count, or both, with an optional reason that goes into the history next to the old and the new time. It is the same planning as everywhere else — the pallet count sets the duration, so changing only the pallets moves the end of the slot and can land the lorry on another dock. Which is why the whole thing is called a change rather than a move, on both sides. A booking whose lorry has already arrived is not changed by anyone. The same dialog cancels a booking, with the same optional reason, which is kept on the booking and in its history; the slot is free again right away and the booking leaves the timeline.
 
 Both of those reach the supplier by email: one mail names the old and the new time, the dock, the pallets and the reason, the other the slot that is gone and where to book a new one. The old time is read before the booking is replanned, which is the whole point of sending it, and a reason the admin typed is escaped before it goes into the mail. A supplier who changes or cancels their own booking is told nothing — they already know. The mails go out directly rather than through the queue, because no worker runs here yet; making them queued later is one interface on the mailable.
+
+A supplier may keep a default driver phone in their profile. The booking form starts with that number and the supplier
+can type another one over it when a different driver comes; the booking then carries the number it was made with, and a
+later change to the profile leaves it alone.
 
 A supplier says what they want — inbound or outbound — and how many pallets they carry; the system answers with the days on which that fits and the start times of each. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
 

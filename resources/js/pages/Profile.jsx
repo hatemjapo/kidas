@@ -6,10 +6,17 @@ const fields = [
     { name: 'company_name', label: 'Company', autoComplete: 'organization' },
     { name: 'company_phone', label: 'Company phone', autoComplete: 'tel' },
     { name: 'name', label: 'Contact name', autoComplete: 'name' },
+    {
+        name: 'driver_phone',
+        label: 'Default driver phone',
+        autoComplete: 'tel',
+        optional: true,
+        hint: 'A booking is prefilled with this number and can carry another one.',
+    },
 ];
 
 export default function Profile() {
-    const [form, setForm] = useState({ company_name: '', company_phone: '', name: '' });
+    const [form, setForm] = useState({ company_name: '', company_phone: '', name: '', driver_phone: '' });
     const [email, setEmail] = useState('');
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState(null);
@@ -32,6 +39,7 @@ export default function Profile() {
                     company_name: profile.company_name ?? '',
                     company_phone: profile.company_phone ?? '',
                     name: profile.name ?? '',
+                    driver_phone: profile.driver_phone ?? '',
                 });
                 setEmail(profile.email ?? '');
             })
@@ -61,7 +69,10 @@ export default function Profile() {
 
         try {
             await csrf();
-            await api.patch('/profile', form);
+            await api.patch('/profile', {
+                ...form,
+                driver_phone: form.driver_phone === '' ? null : form.driver_phone,
+            });
             setSaved(true);
         } catch (error) {
             if (error.response?.status === 422) {
@@ -106,7 +117,11 @@ export default function Profile() {
                     <div key={field.name} className="flex flex-col gap-1">
                         <label
                             htmlFor={field.name}
-                            className="text-sm font-medium text-slate-700 after:ml-0.5 after:text-red-600 after:content-['*']"
+                            className={`text-sm font-medium text-slate-700 ${
+                                field.optional
+                                    ? ''
+                                    : "after:ml-0.5 after:text-red-600 after:content-['*']"
+                            }`}
                         >
                             {field.label}
                         </label>
@@ -115,13 +130,19 @@ export default function Profile() {
                             name={field.name}
                             type="text"
                             autoComplete={field.autoComplete}
-                            required
+                            required={! field.optional}
+                            aria-describedby={field.hint ? `${field.name}-hint` : undefined}
                             value={form[field.name]}
                             onChange={(event) =>
                                 setForm({ ...form, [field.name]: event.target.value })
                             }
                             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                         />
+                        {field.hint && (
+                            <p id={`${field.name}-hint`} className="text-xs text-slate-500">
+                                {field.hint}
+                            </p>
+                        )}
                         {errors[field.name] && (
                             <p className="text-sm text-red-600">{errors[field.name][0]}</p>
                         )}

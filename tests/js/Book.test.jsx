@@ -277,3 +277,64 @@ test('shows that a supplier is missing', async () => {
 
     expect(await screen.findByText('This supplier is not approved.')).toBeInTheDocument();
 });
+
+test('prefills the driver phone a supplier keeps in their profile', async () => {
+    api.get.mockImplementation((url) => {
+        if (url === '/profile') {
+            return Promise.resolve({ data: { data: { driver_phone: '+49 170 1234567' } } });
+        }
+
+        if (url.startsWith('/vehicles')) {
+            return Promise.resolve({ data: { data: vehicles } });
+        }
+
+        return Promise.resolve({ data: { data: days, meta: { duration_minutes: 45 } } });
+    });
+
+    renderBook();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+
+    expect(await screen.findByLabelText('Driver phone')).toHaveValue('+49 170 1234567');
+});
+
+test('lets another driver be typed over the default', async () => {
+    api.get.mockImplementation((url) => {
+        if (url === '/profile') {
+            return Promise.resolve({ data: { data: { driver_phone: '+49 170 1234567' } } });
+        }
+
+        if (url.startsWith('/vehicles')) {
+            return Promise.resolve({ data: { data: vehicles } });
+        }
+
+        return Promise.resolve({ data: { data: days, meta: { duration_minutes: 45 } } });
+    });
+
+    api.post.mockResolvedValue({
+        data: { data: { id: 9, dock_number: 1, starts_at: slot.starts_at, ends_at: slot.ends_at, pallets: 10, license_plate: 'HHAB1234' } },
+    });
+
+    renderBook();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+
+    fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
+    fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 171 9999999' } });
+    fireEvent.change(screen.getByLabelText('License plate'), { target: { value: 'HHAB1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
+
+    await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith('/bookings', expect.objectContaining({ driver_phone: '+49 171 9999999' }))
+    );
+});
+
+test('asks no profile when the admin books for somebody else', async () => {
+    renderAsAdmin();
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/suppliers'));
+
+    expect(api.get).not.toHaveBeenCalledWith('/profile');
+});
