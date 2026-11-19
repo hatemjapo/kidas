@@ -3,9 +3,11 @@
 namespace App\Actions\Bookings;
 
 use App\Enums\BookingStatus;
+use App\Mail\BookingCancelled;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class CancelBooking
 {
@@ -25,7 +27,15 @@ class CancelBooking
     {
         $this->bookingChangeGuard->denyAChangeToABookingThatIsNoLongerOpen($booking, 'cancelled');
 
-        return DB::transaction(fn (): Booking => $this->storeCancellation($user, $booking, $reason));
+        $cancelled = DB::transaction(fn (): Booking => $this->storeCancellation($user, $booking, $reason));
+
+        $supplierUser = $cancelled->getSupplierUser();
+
+        if ($supplierUser instanceof User) {
+            Mail::to($supplierUser)->send(new BookingCancelled($cancelled, $reason));
+        }
+
+        return $cancelled;
     }
 
     private function storeCancellation(User $user, Booking $booking, ?string $reason): Booking

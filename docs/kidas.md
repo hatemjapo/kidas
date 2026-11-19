@@ -158,8 +158,7 @@ Priority: **M** = MVP (must have), **N** = Nice to have. Order = recommended bui
 - **E7-S1 (M) Admin books** – Inbound or outbound for any supplier, without the 3 h restriction.
 - **E7-S2 (M) Admin reschedules** – Different time/dock; reason required; dock type must match.
 - **E7-S3 (M) Admin cancels** – Reason required.
-- **E7-S4 (M) Notifications** – On E7-S2/S3: database notification + email to the supplier (queued). *AC:* content includes old/new time and the reason.
-- **E7-S5 (M) Notifications in the supplier account** – List, read/unread.
+- **E7-S4 (M) Notifications** – On E7-S2/S3: email to the supplier. *AC:* content includes old/new time and the reason.
 
 ### E8 – Live Status for Suppliers
 - **E8-S1 (M) Status display** – Booking detail shows the current status and "Your dock is free – you may arrive now" as soon as the previous booking on that dock is completed (polling, e.g. every 30 s).
