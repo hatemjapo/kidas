@@ -1,0 +1,1245 @@
+openapi: 3.0.3
+info:
+  title: KiDas API
+  version: '1.0'
+  description: |-
+    Dock appointment system for a warehouse with ten docks.
+
+    Suppliers book time slots, the warehouse records what arrives, and the admin books, changes and cancels on behalf of any supplier. The dock is assigned by the system: a supplier picks a start time, never a dock.
+
+    Times are stored in UTC and sent as instants in UTC (2027-06-02T08:00:00Z); they are displayed in Europe/Berlin. Intervals are half open, so a slot from 10:00 to 10:30 leaves 10:30 free.
+servers:
+- url: http://localhost:8080/api/v1
+  description: Sail
+tags:
+- name: Authentication
+  description: Registration, login and the signed in user.
+- name: Profile
+  description: What a supplier keeps about their own company.
+- name: Vehicles
+  description: The license plates a supplier has saved.
+- name: Slots
+  description: Which days and start times a booking fits into.
+- name: Bookings
+  description: A supplier's own bookings.
+- name: Warehouse
+  description: The day at the docks, arrivals and handling. Staff and admin.
+- name: Admin
+  description: Booking, changing and cancelling for any supplier.
+security:
+- sessionCookie: []
+paths:
+  /register:
+    post:
+      tags:
+      - Authentication
+      summary: Register a supplier company
+      description: Creates the user and the company, which starts as pending. Signing in is refused until
+        an admin approves it.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - name
+              - email
+              - password
+              - password_confirmation
+              - company_name
+              - company_phone
+              properties:
+                name:
+                  type: string
+                  example: Jamie Berg
+                email:
+                  type: string
+                  format: email
+                  example: dispo@nordfracht.test
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+                company_name:
+                  type: string
+                  example: Nordfracht GmbH
+                company_phone:
+                  type: string
+                  example: +49 40 123456
+      responses:
+        '201':
+          description: The company was registered and now waits for approval.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Too many attempts.
+  /login:
+    post:
+      tags:
+      - Authentication
+      summary: Sign in
+      description: Starts a session. A supplier whose company is not approved is refused with 403.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - email
+              - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: nordfracht@kidas.test
+                password:
+                  type: string
+                  format: password
+                  example: password
+      responses:
+        '200':
+          description: The signed in user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '403':
+          description: The company is not approved yet.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Too many attempts.
+  /logout:
+    post:
+      tags:
+      - Authentication
+      summary: Sign out
+      responses:
+        '204':
+          description: The session has ended.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /me:
+    get:
+      tags:
+      - Authentication
+      summary: The signed in user
+      responses:
+        '200':
+          description: The user behind the session.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /profile:
+    get:
+      tags:
+      - Profile
+      summary: The supplier's own profile
+      responses:
+        '200':
+          description: Company and contact.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags:
+      - Profile
+      summary: Change company, phone and contact name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                company_name:
+                  type: string
+                company_phone:
+                  type: string
+      responses:
+        '200':
+          description: The profile as it now stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /vehicles:
+    get:
+      tags:
+      - Vehicles
+      summary: The saved license plates
+      responses:
+        '200':
+          description: The plates of this supplier, ordered by plate.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Vehicles
+      summary: Save a license plate
+      description: The plate is normalized before it is stored, so "hh-ab 1234" and "HHAB1234" are the
+        same lorry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - license_plate
+              properties:
+                license_plate:
+                  type: string
+                  example: HH-AB 1234
+      responses:
+        '201':
+          description: The plate that was saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Vehicle'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /vehicles/{vehicle}:
+    delete:
+      tags:
+      - Vehicles
+      summary: Remove a license plate
+      parameters:
+      - name: vehicle
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: The plate is gone.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not a plate of this supplier.
+  /slots:
+    get:
+      tags:
+      - Slots
+      summary: The days and start times a booking fits into
+      description: Answers with five days at a time, and only days on which something is actually possible.
+        "after" pages forward, "before" pages back. A supplier is offered nothing within the next three
+        hours; an admin is.
+      parameters:
+      - name: type
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - inbound
+          - outbound
+      - name: pallets
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 70
+      - name: after
+        in: query
+        description: The last day of the page before, as YYYY-MM-DD.
+        schema:
+          type: string
+          format: date
+      - name: before
+        in: query
+        description: The first day of the page after, as YYYY-MM-DD.
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Bookable days with their start times.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookableDay'
+                  meta:
+                    type: object
+                    properties:
+                      duration_minutes:
+                        type: integer
+                        example: 45
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings:
+    get:
+      tags:
+      - Bookings
+      summary: The supplier's own bookings
+      description: Newest first, twenty to a page.
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: A page of bookings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Bookings
+      summary: Book one of the offered start times
+      description: The dock is assigned by the system under a lock. Send either a saved vehicle_id or
+        a new license_plate; a new one is remembered for the supplier.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBooking'
+      responses:
+        '201':
+          description: The booking, with its dock.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/SlotGone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings/{bookingId}:
+    get:
+      tags:
+      - Bookings
+      summary: One booking with its history
+      parameters:
+      - &id001
+        $ref: '#/components/parameters/BookingId'
+      responses:
+        '200':
+          description: The booking and every step it has taken.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BookingWithHistory'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+      - Bookings
+      summary: Change the time or the pallet count
+      description: The pallet count sets the duration, so changing it alone moves the end of the slot
+        and can land the lorry on another dock. Only up to three hours before the slot.
+      parameters:
+      - *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                starts_at:
+                  type: string
+                  format: date-time
+                  example: '2027-06-02T08:00:00Z'
+                pallets:
+                  type: integer
+                  minimum: 1
+                  maximum: 70
+      responses:
+        '200':
+          description: The booking as it now stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Too late, or the booking is no longer merely booked.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/SlotGone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings/{bookingId}/cancel:
+    post:
+      tags:
+      - Bookings
+      summary: Cancel a booking
+      description: Only up to three hours before the slot. The slot is free again right away.
+      parameters:
+      - *id001
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: The cancelled booking.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Too late, or the booking is no longer merely booked.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings/{bookingId}/status:
+    get:
+      tags:
+      - Bookings
+      summary: Whether the dock is clear
+      description: Opens a quarter of an hour before the slot. Until then window_open is false and nothing
+        needs to be asked. poll_seconds says how often to ask while it is open. A dock counts as free
+        once the lorry before it has been handled.
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: The state of the dock for this booking.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DockReadiness'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /schedule:
+    get:
+      tags:
+      - Warehouse
+      summary: The day at the docks
+      description: Every dock with the bookings of that day. Cancelled ones are left out. A day that was
+        never released is answered with the opening hours of its weekday and empty docks.
+      parameters:
+      - name: date
+        in: query
+        description: The day to show, as YYYY-MM-DD. Today when left out.
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: The timeline of one day.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleDay'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /bookings/{bookingId}/arrival:
+    post:
+      tags:
+      - Warehouse
+      summary: Register an arrival
+      description: Records the plate that actually turned up. If it differs from the booking, the booking
+        is flagged and has to be confirmed with the company before the handling may start. Plates are
+        compared normalized.
+      parameters:
+      - *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - license_plate
+              properties:
+                license_plate:
+                  type: string
+                  example: HH-AB 1234
+      responses:
+        '200':
+          description: The booking, now arrived.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The booking is not one that is still awaited.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags:
+      - Warehouse
+      summary: Correct the plate that was typed
+      description: Possible while the lorry waits. The flag is recomputed, and a confirmation given for
+        the earlier plate is withdrawn. The time of arrival stays.
+      parameters:
+      - *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - license_plate
+              properties:
+                license_plate:
+                  type: string
+      responses:
+        '200':
+          description: The booking with the corrected plate.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The lorry is not waiting any more.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings/{bookingId}/plate-verification:
+    post:
+      tags:
+      - Warehouse
+      summary: Confirm a plate that differed
+      description: After checking with the company. The flag stays on the booking as a record; what was
+        said goes into the history.
+      parameters:
+      - *id001
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+                  example: Rang the office, same lorry.
+      responses:
+        '200':
+          description: The booking, with the plate confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: There is no open plate mismatch.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /bookings/{bookingId}/handling:
+    post:
+      tags:
+      - Warehouse
+      summary: Start the handling
+      description: Only from arrived, and only once a plate in question has been confirmed.
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: The booking, now in_progress.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The step is not one this booking can take, or the plate is still in question.
+  /bookings/{bookingId}/completion:
+    post:
+      tags:
+      - Warehouse
+      summary: Report the dock free
+      description: Only from in_progress. Ends the booking.
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: The booking, now completed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The step is not one this booking can take.
+  /bookings/{bookingId}/no-show:
+    post:
+      tags:
+      - Warehouse
+      summary: Nobody turned up
+      description: Only once the slot is over, and only for a booking that was still awaited. The slot
+        is free again afterwards.
+      parameters:
+      - *id001
+      responses:
+        '200':
+          description: The booking, now no_show.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleBooking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The slot is not over yet, or the lorry has already been at the dock.
+  /suppliers:
+    get:
+      tags:
+      - Admin
+      summary: The approved suppliers
+      responses:
+        '200':
+          description: Companies to book for, ordered by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        company_name:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /suppliers/{supplier}/vehicles:
+    get:
+      tags:
+      - Admin
+      summary: The plates one supplier has saved
+      parameters:
+      - name: supplier
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: The plates of that company.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No approved supplier with that id.
+  /admin/bookings:
+    post:
+      tags:
+      - Admin
+      summary: Book for a supplier
+      description: The same booking as a supplier's own, with the company in front and without the three
+        hours of lead time. A vehicle must belong to that supplier.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+              - type: object
+                required:
+                - supplier_id
+                properties:
+                  supplier_id:
+                    type: integer
+              - $ref: '#/components/schemas/NewBooking'
+      responses:
+        '201':
+          description: The booking, which now belongs to that supplier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/SlotGone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /admin/bookings/{bookingId}:
+    patch:
+      tags:
+      - Admin
+      summary: Change a booking of any supplier
+      description: New time, new pallet count, or both, with an optional reason that is kept in the history.
+        The supplier is told by email.
+      parameters:
+      - *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                starts_at:
+                  type: string
+                  format: date-time
+                pallets:
+                  type: integer
+                  minimum: 1
+                  maximum: 70
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: The booking as it now stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The booking is no longer merely booked.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/SlotGone'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /admin/bookings/{bookingId}/cancel:
+    post:
+      tags:
+      - Admin
+      summary: Cancel a booking of any supplier
+      description: With an optional reason, which is kept on the booking and sent to the supplier by email.
+      parameters:
+      - *id001
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: The cancelled booking.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The booking is no longer merely booked.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: kidas_session
+      description: Sanctum's SPA authentication. Fetch /sanctum/csrf-cookie first, then send the XSRF-TOKEN
+        cookie back as the X-XSRF-TOKEN header on every writing request. The browser carries the session
+        cookie by itself.
+  parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: integer
+  responses:
+    Unauthenticated:
+      description: No session.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The role may not do this.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: No such booking for this account.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    SlotGone:
+      description: Every dock of that kind is taken for this slot.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: The input was refused.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - admin
+          - staff
+          - supplier
+    Profile:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        company_name:
+          type: string
+        company_phone:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+        license_plate:
+          type: string
+          example: HHAB1234
+    Slot:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          example: '2027-06-02T08:00:00Z'
+        ends_at:
+          type: string
+          format: date-time
+          example: '2027-06-02T08:45:00Z'
+        shift:
+          type: string
+          enum:
+          - early
+          - late
+    BookableDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
+    NewBooking:
+      type: object
+      required:
+      - type
+      - pallets
+      - starts_at
+      - order_number
+      - driver_phone
+      properties:
+        type:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        pallets:
+          type: integer
+          minimum: 1
+          maximum: 70
+        starts_at:
+          type: string
+          format: date-time
+          example: '2027-06-02T08:00:00Z'
+        order_number:
+          type: string
+          example: PO-4711
+        driver_phone:
+          type: string
+          example: +49 170 1234567
+        vehicle_id:
+          type: integer
+          nullable: true
+          description: One of the supplier's saved plates. Send this or license_plate.
+        license_plate:
+          type: string
+          nullable: true
+          description: A new plate, which is remembered for the supplier.
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        status:
+          type: string
+          enum:
+          - booked
+          - arrived
+          - in_progress
+          - completed
+          - cancelled
+          - no_show
+        dock_number:
+          type: integer
+          example: 1
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        pallets:
+          type: integer
+        order_number:
+          type: string
+        license_plate:
+          type: string
+        driver_phone:
+          type: string
+        cancel_reason:
+          type: string
+          nullable: true
+    BookingEvent:
+      type: object
+      properties:
+        from_status:
+          type: string
+          nullable: true
+        to_status:
+          type: string
+        note:
+          type: string
+          nullable: true
+        user:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    BookingWithHistory:
+      allOf:
+      - $ref: '#/components/schemas/Booking'
+      - type: object
+        properties:
+          events:
+            type: array
+            items:
+              $ref: '#/components/schemas/BookingEvent'
+    ScheduleBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+          - inbound
+          - outbound
+        status:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        pallets:
+          type: integer
+        order_number:
+          type: string
+        license_plate:
+          type: string
+        company:
+          type: string
+          nullable: true
+        arrived_at:
+          type: string
+          format: date-time
+          nullable: true
+        arrived_plate:
+          type: string
+          nullable: true
+        plate_mismatch:
+          type: boolean
+        plate_verified:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+    ScheduleDock:
+      type: object
+      properties:
+        number:
+          type: integer
+        is_active:
+          type: boolean
+        bookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleBooking'
+    ScheduleDay:
+      type: object
+      properties:
+        opens_at:
+          type: string
+          format: date-time
+        closes_at:
+          type: string
+          format: date-time
+        is_released:
+          type: boolean
+        is_closed:
+          type: boolean
+        docks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleDock'
+    DockReadiness:
+      type: object
+      properties:
+        window_open:
+          type: boolean
+        dock_free:
+          type: boolean
+        busy_until:
+          type: string
+          format: date-time
+          nullable: true
+        poll_seconds:
+          type: integer
+          example: 30
