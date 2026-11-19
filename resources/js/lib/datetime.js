@@ -23,6 +23,18 @@ const timeFormatter = new Intl.DateTimeFormat('en-GB', {
     minute: '2-digit',
 });
 
+const longDateFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+});
+
+export function formatLongDate(iso) {
+    return longDateFormatter.format(new Date(iso));
+}
+
 export function formatDateTime(iso) {
     return dateTimeFormatter.format(new Date(iso));
 }
