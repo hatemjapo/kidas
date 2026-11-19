@@ -221,6 +221,31 @@ When nobody turns up at all, the booking is marked as a no-show — but only onc
 
 `./vendor/bin/sail artisan make:filament-user` creates a user on the role `staff`, the default of the `role` column. To let that user into the panel, set their `role` to `admin` in the database by hand. The role is not mass assignable, so no request and no command can hand it out; the demo seeder in E9-S1 replaces this step.
 
+## Known limitations
+
+KiDas is a demonstration. It is meant to be reachable by anyone, with the demo logins above, so people can click through
+it — there is no real company data in it, and that shapes what was built and what was left out.
+
+**What is guarded.** Every writing endpoint carries a rate limit, counted per account and not per address, so one
+visitor cannot fill all ten docks for two weeks in a minute or hammer the handling steps; the numbers live in
+`config/booking.php`. A test walks the route list and refuses any writing route without a limit, so a new endpoint
+cannot quietly slip past it. Signing in and registering keep their own tighter limit. Authorization is pinned down by a
+matrix that names every endpoint with the roles that may reach it, together with a test that the matrix and the
+registered routes are the same set — a route that nobody assigned a role to fails the build. Mass assignment is limited
+to explicit `#[Fillable]` lists, and tests send `status`, `supplier_id`, `dock_id`, `created_by` and `role` along with
+honest input to prove none of them arrives. A supplier's approval is checked when they sign in, and the Filament panel
+is open to admins alone.
+
+**What is deliberately not done.** There is no password policy beyond Laravel's default of eight characters, no check
+against leaked passwords, no two-factor authentication and no audit log of sign-ins: the accounts are shared and
+published. The live status tells a supplier until roughly when another lorry occupies their dock — no name, no order
+number, but it is information about somebody else's booking. The API reference at `/docs` is public, which is the point
+of it. Mails are written to the log rather than sent, since no mail service is configured.
+
+**Before it goes live** (E9-S5): `APP_DEBUG=false` and `APP_ENV=production`, so a stack trace never reaches a visitor;
+`SESSION_SECURE_COOKIE=true` behind TLS; `SANCTUM_STATEFUL_DOMAINS` set to the real host; and a mail driver if the
+notifications should actually arrive.
+
 ## Tests & code quality
 
 ```bash
@@ -236,4 +261,4 @@ Every pull request runs on GitHub Actions in three jobs: `Quality` (Pint, Larast
 
 ## Project status
 
-The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, **E6-S1** – the warehouse timeline, **E6-S2** – registering an arrival, **E6-S3** – handling a lorry and releasing the dock, **E6-S4** – the no-show, **E7-S1** – the admin booking for a supplier, **E7-S2** – the admin changing a booking, **E7-S3** – the admin cancelling one, **E7-S4** – the mails that tell the supplier, **E8-S1** – the live dock status, **E9-S1** – the demo data, and **E9-S3** – the API reference. E8-S2 (real time over WebSockets) was skipped on purpose: polling is enough at this size, and Reverb would add a second process to run. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
+The project is built story by story along the plan in [`docs/kidas.md`](docs/kidas.md). Currently finished: **E0-S1** – Laravel scaffold with Sail and PostgreSQL, **E0-S2** – Pest, Pint, Larastan and the CI pipeline, **E0-S3** – the React scaffold, **E0-S4** – the Filament panel, **E0-S5** – the frontend tests, **E1-S1** – login and logout over the API, **E1-S2** – the supplier registration, **E1-S3** – the approval in the admin panel, **E1-S4** – roles and policies, **E2-S1** – the docks in the panel, **E2-S2** – the default opening hours, **E2-S3** – the default shift times, **E2-S4** – the day editor, **E2-S5** – the pallet durations, **E4-S1** – the supplier profile, **E4-S2** – the supplier's vehicles, **E5-S1** – the slot calculation, **E5-S2** – the slot suggestion API, **E5-S3** – creating a booking, **E5-S4** – the supplier's own bookings, **E5-S5** – moving a booking, **E5-S6** – cancelling one, **E5-S7** – the booking flow in the app, **E6-S1** – the warehouse timeline, **E6-S2** – registering an arrival, **E6-S3** – handling a lorry and releasing the dock, **E6-S4** – the no-show, **E7-S1** – the admin booking for a supplier, **E7-S2** – the admin changing a booking, **E7-S3** – the admin cancelling one, **E7-S4** – the mails that tell the supplier, **E8-S1** – the live dock status, **E9-S1** – the demo data, **E9-S3** – the API reference, and **E9-S4** – the security review. E8-S2 (real time over WebSockets) was skipped on purpose: polling is enough at this size, and Reverb would add a second process to run. The full README described in `docs/kidas.md` section 7 follows in E9-S2.
