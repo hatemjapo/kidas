@@ -84,6 +84,7 @@ The SPA authenticates through Sanctum's cookie based session, not through tokens
 | `GET` | `/api/v1/suppliers` | the approved suppliers, for the admin |
 | `GET` | `/api/v1/suppliers/{id}/vehicles` | the plates one supplier has saved |
 | `POST` | `/api/v1/admin/bookings` | the admin books for a supplier |
+| `PATCH` | `/api/v1/admin/bookings/{id}` | the admin changes a booking of any supplier |
 | `GET` | `/api/v1/schedule?date=` | the warehouse timeline of one day |
 | `POST` | `/api/v1/bookings/{id}/arrival` | the warehouse registers an arrival |
 | `PATCH` | `/api/v1/bookings/{id}/arrival` | the warehouse corrects the plate that was typed |
@@ -140,7 +141,7 @@ The same page keeps the supplier's license plates. Whatever is typed is reduced 
 
 The admin books on the same page a supplier books on, with one field in front: whom the slot is for. The rest of the form is the one the supplier sees, so a plate can be picked from the ones that supplier has saved or typed anew, and a new one is remembered for them as usual — a vehicle belonging to somebody else is refused. The booking then belongs to that supplier: it stands in their list, they can move or cancel it, and the admin is only recorded as the one who made it.
 
-What the admin is free of is the three hours of lead time; everything else still holds, so a day that was never released stays shut and a delivery still needs an inbound dock. The lead time lives in one place, `LeadTime::getEarliestStartForUser()`, which is also what the slot search asks, so the admin is offered start times a supplier is not. One consequence is worth knowing: a slot the admin books for the next hour is already past the supplier's own deadline, so that supplier can no longer move or cancel it themselves.
+What the admin is free of is the three hours of lead time; everything else still holds, so a day that was never released stays shut and a delivery still needs an inbound dock. The lead time lives in one place, `LeadTime::getEarliestStartForUser()`, which is also what the slot search asks, so the admin is offered start times a supplier is not. One consequence is worth knowing: a slot the admin books for the next hour is already past the supplier's own deadline, so that supplier can no longer move or cancel it themselves. For those cases the admin can change the booking afterwards: a new start time, another pallet count, or both, with an optional reason that goes into the history next to the old and the new time. It is the same planning as everywhere else — the pallet count sets the duration, so changing only the pallets moves the end of the slot and can land the lorry on another dock. Which is why the whole thing is called a change rather than a move, on both sides. A booking whose lorry has already arrived is not changed by anyone.
 
 A supplier says what they want — inbound or outbound — and how many pallets they carry; the system answers with the days on which that fits and the start times of each. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
 

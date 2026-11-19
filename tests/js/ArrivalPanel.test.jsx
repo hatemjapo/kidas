@@ -2,12 +2,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 
 vi.mock('../../resources/js/lib/api', () => ({
-    default: { post: vi.fn(), patch: vi.fn() },
+    default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
     csrf: vi.fn(),
+}));
+
+vi.mock('../../resources/js/auth/AuthContext', () => ({
+    useAuth: vi.fn(),
 }));
 
 const api = (await import('../../resources/js/lib/api')).default;
 const { csrf } = await import('../../resources/js/lib/api');
+const { useAuth } = await import('../../resources/js/auth/AuthContext');
 const { default: ArrivalPanel } = await import('../../resources/js/components/ArrivalPanel');
 
 const awaited = {
@@ -28,10 +33,24 @@ const awaited = {
 };
 
 beforeEach(() => {
+    api.get.mockReset();
     api.post.mockReset();
     api.patch.mockReset();
+
+    api.get.mockResolvedValue({
+        data: {
+            data: [
+                {
+                    date: '2027-06-02',
+                    slots: [{ starts_at: '2027-06-02T12:00:00Z', ends_at: '2027-06-02T12:15:00Z', shift: 'late' }],
+                },
+            ],
+            meta: { duration_minutes: 15 },
+        },
+    });
     csrf.mockReset();
     csrf.mockResolvedValue({});
+    useAuth.mockReturnValue({ role: 'staff' });
 });
 
 test('names the booking that is awaited', () => {
@@ -422,4 +441,87 @@ test('shows why a no-show was refused', async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes, nobody turned up' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('not over yet');
+});
+
+function renderAsAdmin(booking) {
+    useAuth.mockReturnValue({ role: 'admin' });
+
+    return render(<ArrivalPanel booking={booking} onDone={vi.fn()} onClose={vi.fn()} />);
+}
+
+test('leaves the change to the admin', () => {
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Change this booking' })).not.toBeInTheDocument();
+});
+
+test('offers the admin to change a booking', () => {
+    renderAsAdmin(awaited);
+
+    expect(screen.getByRole('button', { name: 'Change this booking' })).toBeInTheDocument();
+});
+
+test('offers no change once the lorry is there', () => {
+    renderAsAdmin({ ...awaited, status: 'arrived', arrived_plate: 'HHAB1234' });
+
+    expect(screen.queryByRole('button', { name: 'Change this booking' })).not.toBeInTheDocument();
+});
+
+test('changes the pallets and keeps the time', async () => {
+    api.patch.mockResolvedValue({ data: { data: { ...awaited, pallets: 24 } } });
+
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
+    fireEvent.change(screen.getByLabelText('Pallets'), { target: { value: '24' } });
+    fireEvent.change(screen.getByLabelText('Reason (optional)'), { target: { value: 'Bigger load' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the time' }));
+
+    await waitFor(() =>
+        expect(api.patch).toHaveBeenCalledWith('/admin/bookings/7', {
+            starts_at: null,
+            pallets: 24,
+            reason: 'Bigger load',
+        })
+    );
+});
+
+test('sends no reason when none was typed', async () => {
+    api.patch.mockResolvedValue({ data: { data: awaited } });
+
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the time' }));
+
+    await waitFor(() =>
+        expect(api.patch).toHaveBeenCalledWith('/admin/bookings/7', {
+            starts_at: null,
+            pallets: 10,
+            reason: null,
+        })
+    );
+});
+
+test('lets the change be left alone', () => {
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it' }));
+
+    expect(screen.queryByLabelText('Reason (optional)')).not.toBeInTheDocument();
+    expect(api.patch).not.toHaveBeenCalled();
+});
+
+test('shows why a change was refused', async () => {
+    api.patch.mockRejectedValue({
+        response: { status: 409, data: { message: 'This slot has just been taken. Please pick another one.' } },
+    });
+
+    renderAsAdmin(awaited);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change this booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the time' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('has just been taken');
 });

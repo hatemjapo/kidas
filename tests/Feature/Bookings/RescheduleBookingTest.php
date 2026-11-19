@@ -187,7 +187,7 @@ test('refuses a move less than three hours before the slot', function () {
 
     patchJson("/api/v1/bookings/{$booking->id}", ['starts_at' => '2027-06-02T13:00:00+02:00'])
         ->assertForbidden()
-        ->assertJsonPath('message', 'A booking can only be moved up to three hours before its slot.');
+        ->assertJsonPath('message', 'A booking can only be changed up to three hours before its slot.');
 
     expect($booking->refresh()->starts_at->toIso8601ZuluString())->toBe('2027-06-02T10:00:00Z');
 });
@@ -202,7 +202,7 @@ test('refuses to move a booking that is no longer merely booked', function (Book
 
     patchJson("/api/v1/bookings/{$booking->id}", ['starts_at' => '2027-06-02T10:00:00+02:00'])
         ->assertForbidden()
-        ->assertJsonPath('message', 'A booking in this state can no longer be moved.');
+        ->assertJsonPath('message', 'A booking in this state can no longer be changed.');
 })->with([
     BookingStatus::Arrived,
     BookingStatus::InProgress,

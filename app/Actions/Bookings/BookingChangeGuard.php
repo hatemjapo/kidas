@@ -9,11 +9,16 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class BookingChangeGuard
 {
-    public function denyAChangeThatComesTooLate(Booking $booking, string $change): void
+    public function denyAChangeToABookingThatIsNoLongerOpen(Booking $booking, string $change): void
     {
         if ($booking->status !== BookingStatus::Booked) {
             throw new AccessDeniedHttpException("A booking in this state can no longer be {$change}.");
         }
+    }
+
+    public function denyAChangeThatComesTooLate(Booking $booking, string $change): void
+    {
+        $this->denyAChangeToABookingThatIsNoLongerOpen($booking, $change);
 
         $deadline = CarbonImmutable::parse($booking->starts_at)
             ->subHours((int) config('booking.change_deadline_hours'));

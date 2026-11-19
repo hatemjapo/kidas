@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Bookings\CreateBooking;
+use App\Actions\Bookings\RescheduleBooking;
 use App\Data\NewBooking;
 use App\Enums\DockUsage;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\AdminRescheduleBookingRequest;
 use App\Http\Requests\Api\StoreAdminBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Models\Booking;
 use App\Models\Supplier;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -32,6 +35,27 @@ class AdminBookingController extends Controller
         ));
 
         return (new BookingResource($booking->load('dock')))->response()->setStatusCode(201);
+    }
+
+    public function update(
+        AdminRescheduleBookingRequest $request,
+        int $booking,
+        RescheduleBooking $rescheduleBooking,
+    ): BookingResource {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $startsAt = $request->date('starts_at');
+
+        $changed = $rescheduleBooking->rescheduleBookingForAdmin(
+            $user,
+            Booking::getBookingForWarehouse($booking),
+            $startsAt === null ? null : CarbonImmutable::parse($startsAt)->utc(),
+            $request->input('pallets') === null ? null : $request->integer('pallets'),
+            $request->input('reason') === null ? null : $request->string('reason')->toString(),
+        );
+
+        return new BookingResource($changed->load('dock'));
     }
 
     private function getLicensePlate(StoreAdminBookingRequest $request, Supplier $supplier): string

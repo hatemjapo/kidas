@@ -61,6 +61,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
             ->name('api.suppliers.vehicles');
 
         Route::post('/admin/bookings', [AdminBookingController::class, 'store'])->name('api.admin.bookings.store');
+
+        Route::patch('/admin/bookings/{booking}', [AdminBookingController::class, 'update'])
+            ->whereNumber('booking')
+            ->name('api.admin.bookings.update');
     });
 
     Route::middleware('role:supplier,admin')->group(function (): void {
