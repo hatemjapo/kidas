@@ -227,6 +227,15 @@ When nobody turns up at all, the booking is marked as a no-show — but only onc
 
 `./vendor/bin/sail artisan make:filament-user` creates a user on the role `staff`, the default of the `role` column. To let that user into the panel, set their `role` to `admin` in the database by hand. The role is not mass assignable, so no request and no command can hand it out; the demo seeder in E9-S1 replaces this step.
 
+### How it looks
+
+Every page is built from the same handful of pieces in `resources/js/components/ui` and the colours in the Tailwind
+theme, so a button, a field or a status chip looks the same wherever it turns up. How a booking is shown — its colour on
+the schedule, its chip in a list, the word for its status — is decided once in `lib/statusStyles.js`, and a test holds
+that map to the `BookingStatus` enum. A page that is empty says so in one sentence and offers the next step instead of
+leaving a blank, a page that belongs to another role says that too rather than bouncing the visitor silently, and the
+warehouse dialog asks back before it releases a dock or marks a no-show.
+
 ## Known limitations
 
 KiDas is a demonstration. It is meant to be reachable by anyone, with the demo logins above, so people can click through

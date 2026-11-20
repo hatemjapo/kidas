@@ -36,15 +36,23 @@ test('lets an admin see the page as well', function () {
     expect(screen.getByText('Dock schedule')).toBeInTheDocument();
 });
 
-test('sends another role back to the dashboard', function () {
+test('tells another role that the page is not theirs', function () {
     renderSchedule('supplier');
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'This page is not yours to open', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText(/signed in as a supplier/)).toBeInTheDocument();
     expect(screen.queryByText('Dock schedule')).not.toBeInTheDocument();
 });
 
-test('sends a visitor without a role back as well', function () {
+test('offers the way back to the dashboard', function () {
+    renderSchedule('supplier');
+
+    expect(screen.getByRole('link', { name: 'Back to the dashboard' })).toHaveAttribute('href', '/');
+});
+
+test('turns a visitor without a role away as well', function () {
     renderSchedule(null);
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'This page is not yours to open', level: 1 })).toBeInTheDocument();
+    expect(screen.queryByText('Dock schedule')).not.toBeInTheDocument();
 });

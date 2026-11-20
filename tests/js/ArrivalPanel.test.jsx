@@ -53,11 +53,12 @@ beforeEach(() => {
     useAuth.mockReturnValue({ role: 'staff' });
 });
 
-test('names the booking that is awaited', () => {
-    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+test('names the load and the plate that is expected', () => {
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
-    expect(screen.getByText(/12:00 – 12:15 · dock 1 · Nordfracht GmbH/)).toBeInTheDocument();
-    expect(screen.getByText(/expected/)).toHaveTextContent('HHAB1234');
+    expect(screen.getByText(/Delivery · 10 pallets · PO-4711/)).toBeInTheDocument();
+    expect(screen.getByText('HHAB1234')).toBeInTheDocument();
+    expect(screen.getByText('Booked')).toBeInTheDocument();
 });
 
 test('registers the arrival with the plate that came', async () => {
@@ -65,7 +66,7 @@ test('registers the arrival with the plate that came', async () => {
 
     api.post.mockResolvedValue({ data: { data: { ...awaited, status: 'arrived', arrived_plate: 'HHAB1234' } } });
 
-    render(<ArrivalPanel booking={awaited} onDone={onDone} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={awaited} onDone={onDone} />);
 
     fireEvent.change(screen.getByLabelText('License plate that arrived'), {
         target: { value: 'hh-ab 1234' },
@@ -85,7 +86,6 @@ test('keeps the plate editable once the lorry is there', () => {
         <ArrivalPanel
             booking={{ ...awaited, status: 'arrived', arrived_at: '2027-06-02T10:05:00Z', arrived_plate: 'HHAB1234' }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -107,7 +107,6 @@ test('corrects a plate that was typed wrongly', async () => {
                 plate_mismatch: true,
             }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -130,7 +129,6 @@ test('shows the corrected plate after a reload', () => {
         <ArrivalPanel
             booking={{ ...awaited, status: 'arrived', arrived_plate: 'HHAB1243', plate_mismatch: true }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -138,7 +136,6 @@ test('shows the corrected plate after a reload', () => {
         <ArrivalPanel
             booking={{ ...awaited, status: 'arrived', arrived_plate: 'HHAB1234', plate_mismatch: false }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -157,7 +154,6 @@ test('warns about a plate that does not match', () => {
                 plate_mismatch: true,
             }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -172,7 +168,6 @@ test('confirms the plate with what the company said', async () => {
         <ArrivalPanel
             booking={{ ...awaited, status: 'arrived', arrived_plate: 'HHZZ9999', plate_mismatch: true }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -193,7 +188,6 @@ test('confirms the plate without a note', async () => {
         <ArrivalPanel
             booking={{ ...awaited, status: 'arrived', arrived_plate: 'HHZZ9999', plate_mismatch: true }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -215,7 +209,6 @@ test('says so once a mismatch has been confirmed', () => {
                 plate_verified: true,
             }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -231,7 +224,7 @@ test('shows why the arrival was refused', async () => {
         },
     });
 
-    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Register the arrival' }));
 
@@ -243,7 +236,7 @@ test('shows the field error for a missing plate', async () => {
         response: { status: 422, data: { errors: { license_plate: ['The license plate field is required.'] } } },
     });
 
-    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Register the arrival' }));
 
@@ -262,7 +255,7 @@ const arrived = {
 test('starts the handling of a lorry that is waiting', async () => {
     api.post.mockResolvedValue({ data: { data: { ...arrived, status: 'in_progress' } } });
 
-    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start the handling' }));
 
@@ -274,7 +267,6 @@ test('does not let the handling start while the plate is in question', () => {
         <ArrivalPanel
             booking={{ ...arrived, arrived_plate: 'HHZZ9999', plate_mismatch: true }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -286,7 +278,6 @@ test('lets the handling start once the plate was confirmed', () => {
         <ArrivalPanel
             booking={{ ...arrived, arrived_plate: 'HHZZ9999', plate_mismatch: true, plate_verified: true }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -300,7 +291,6 @@ test('releases the dock when the handling is done', async () => {
         <ArrivalPanel
             booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -321,7 +311,6 @@ test('asks before the dock is released', () => {
         <ArrivalPanel
             booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -335,7 +324,6 @@ test('lets the question be waved away', () => {
         <ArrivalPanel
             booking={{ ...arrived, status: 'in_progress', started_at: '2027-06-02T10:10:00Z' }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -357,7 +345,6 @@ test('shows a finished booking without any buttons', () => {
                 completed_at: '2027-06-02T10:40:00Z',
             }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -374,7 +361,7 @@ test('shows why a step was refused', async () => {
         },
     });
 
-    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={arrived} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start the handling' }));
 
@@ -384,11 +371,11 @@ test('shows why a step was refused', async () => {
 const passed = { ...awaited, starts_at: '2020-06-02T10:00:00Z', ends_at: '2020-06-02T10:15:00Z' };
 
 test('offers the no-show only once the slot is over', () => {
-    const { rerender } = render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+    const { rerender } = render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
     expect(screen.queryByRole('button', { name: 'Nobody turned up' })).not.toBeInTheDocument();
 
-    rerender(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+    rerender(<ArrivalPanel booking={passed} onDone={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Nobody turned up' })).toBeInTheDocument();
 });
@@ -396,7 +383,7 @@ test('offers the no-show only once the slot is over', () => {
 test('asks before a no-show is marked', async () => {
     api.post.mockResolvedValue({ data: { data: { ...passed, status: 'no_show' } } });
 
-    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
 
@@ -409,7 +396,7 @@ test('asks before a no-show is marked', async () => {
 });
 
 test('lets the no-show question be waved away', () => {
-    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Not yet' }));
@@ -423,7 +410,6 @@ test('offers no no-show once the lorry is there', () => {
         <ArrivalPanel
             booking={{ ...passed, status: 'arrived', arrived_plate: 'HHAB1234' }}
             onDone={vi.fn()}
-            onClose={vi.fn()}
         />
     );
 
@@ -435,7 +421,7 @@ test('shows why a no-show was refused', async () => {
         response: { status: 422, data: { message: 'The slot is not over yet.' } },
     });
 
-    render(<ArrivalPanel booking={passed} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, nobody turned up' }));
@@ -446,11 +432,11 @@ test('shows why a no-show was refused', async () => {
 function renderAsAdmin(booking) {
     useAuth.mockReturnValue({ role: 'admin' });
 
-    return render(<ArrivalPanel booking={booking} onDone={vi.fn()} onClose={vi.fn()} />);
+    return render(<ArrivalPanel booking={booking} onDone={vi.fn()} />);
 }
 
 test('leaves the change to the admin', () => {
-    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
     expect(screen.queryByRole('button', { name: 'Change this booking' })).not.toBeInTheDocument();
 });
@@ -533,7 +519,7 @@ test('offers the admin to cancel a booking', () => {
 });
 
 test('leaves the cancellation to the admin', () => {
-    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} onClose={vi.fn()} />);
+    render(<ArrivalPanel booking={awaited} onDone={vi.fn()} />);
 
     expect(screen.queryByRole('button', { name: 'Cancel this booking' })).not.toBeInTheDocument();
 });
@@ -580,4 +566,25 @@ test('offers no cancellation once the lorry is there', () => {
     renderAsAdmin({ ...awaited, status: 'arrived', arrived_plate: 'HHAB1234' });
 
     expect(screen.queryByRole('button', { name: 'Cancel this booking' })).not.toBeInTheDocument();
+});
+
+test('calls the plate out in words when it differs', () => {
+    render(
+        <ArrivalPanel
+            booking={{ ...awaited, status: 'arrived', arrived_plate: 'HHZZ9999', plate_mismatch: true }}
+            onDone={vi.fn()}
+        />
+    );
+
+    expect(screen.getAllByText('Check plate').length).toBeGreaterThan(0);
+});
+
+test('offers the no-show only once the slot is over, in warehouse words', () => {
+    render(<ArrivalPanel booking={passed} onDone={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody turned up' }));
+
+    expect(screen.getByText(/free for somebody else/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes, nobody turned up' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Not yet' })).toBeInTheDocument();
 });

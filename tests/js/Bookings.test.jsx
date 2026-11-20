@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
 vi.mock('../../resources/js/lib/api', () => ({
@@ -83,17 +84,22 @@ test('lists a booking with its day, dock and status', async () => {
 
     render(<Bookings />);
 
-    expect(await screen.findByText(/Wed, 02\/06\/2027, 06:00/)).toBeInTheDocument();
-    expect(screen.getByText(/inbound · 10 pallets · dock 3/)).toBeInTheDocument();
-    expect(screen.getByText('booked')).toBeInTheDocument();
+    expect(await screen.findByText(/Wed, 02\/06\/2027, 06:00 – 06:15/)).toBeInTheDocument();
+    expect(screen.getByText(/Delivery · 10 pallets · dock 3 · PO-4711/)).toBeInTheDocument();
+    expect(screen.getByText('Booked')).toBeInTheDocument();
 });
 
-test('says so when nothing is booked yet', async () => {
+test('says so when nothing is booked yet and offers the way out', async () => {
     answerWith([]);
 
-    render(<Bookings />);
+    render(
+        <MemoryRouter>
+            <Bookings />
+        </MemoryRouter>
+    );
 
     expect(await screen.findByText('You have not booked a slot yet.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Book a slot' })).toHaveAttribute('href', '/book');
 });
 
 test('opens a booking with its history', async () => {
@@ -147,7 +153,11 @@ test('hides the pages when there is only one', async () => {
 test('says so when the bookings cannot be loaded', async () => {
     api.get.mockRejectedValue(new Error('nope'));
 
-    render(<Bookings />);
+    render(
+        <MemoryRouter>
+            <Bookings />
+        </MemoryRouter>
+    );
 
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
 });
