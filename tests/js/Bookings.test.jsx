@@ -106,9 +106,10 @@ test('opens a booking with its history', async () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/bookings/7'));
 
     expect(await screen.findByText('History')).toBeInTheDocument();
-    expect(screen.getByText('PO-4711')).toBeInTheDocument();
-    expect(screen.getByText(/booked by Lena Supplier/)).toBeInTheDocument();
-    expect(screen.getByText(/06:00 – 06:15/)).toBeInTheDocument();
+    expect(screen.getByText('Booking #7 · Order number PO-4711')).toBeInTheDocument();
+    expect(screen.getAllByText('Booked').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Lena Supplier · 01\/06\/2027/)).toBeInTheDocument();
+    expect(screen.getAllByText(/06:00 – 06:15/).length).toBeGreaterThan(0);
 });
 
 test('goes back from a booking to the list', async () => {
@@ -118,7 +119,7 @@ test('goes back from a booking to the list', async () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /02\/06\/2027/ }));
 
-    fireEvent.click(await screen.findByRole('button', { name: /Back to the list/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /My bookings/ }));
 
     expect(await screen.findByText('My bookings')).toBeInTheDocument();
 });
@@ -172,14 +173,14 @@ test('cancels a booking with a reason', async () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
     fireEvent.change(screen.getByLabelText('Reason (optional)'), { target: { value: 'No driver.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel the booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
 
     await waitFor(() =>
         expect(api.post).toHaveBeenCalledWith('/bookings/7/cancel', { reason: 'No driver.' })
     );
 
     expect(csrf).toHaveBeenCalled();
-    expect(await screen.findByText('cancelled')).toBeInTheDocument();
+    expect(await screen.findByText('Cancelled')).toBeInTheDocument();
 });
 
 test('cancels a booking without a reason', async () => {
@@ -188,7 +189,7 @@ test('cancels a booking without a reason', async () => {
     api.post.mockResolvedValue({ data: { data: { ...detail, status: 'cancelled' } } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel the booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/bookings/7/cancel', { reason: null }));
 });
@@ -214,7 +215,7 @@ test('shows why a cancellation was refused', async () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel this booking' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel the booking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('three hours before its slot');
 });
@@ -264,4 +265,57 @@ test('shows why a move was refused', async () => {
     fireEvent.click(await screen.findByRole('button', { name: '10:00' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('has just been taken');
+});
+
+test('shows the live status while the lorry is still expected', async () => {
+    await openDetail();
+
+    expect(screen.getByText('Your slot at dock 3')).toBeInTheDocument();
+    expect(screen.getByText('Time window')).toBeInTheDocument();
+});
+
+test('shows no live status once the booking is over', async () => {
+    await openDetail({ ...detail, status: 'completed' });
+
+    expect(screen.queryByText('Time window')).not.toBeInTheDocument();
+});
+
+test('explains why changing is no longer offered', async () => {
+    await openDetail({ ...detail, change_deadline_at: '2020-01-01T00:00:00Z' });
+
+    expect(screen.queryByRole('button', { name: 'Change this booking' })).not.toBeInTheDocument();
+    expect(screen.getByText(/up to three hours before the slot/)).toBeInTheDocument();
+});
+
+test('says why a finished booking cannot be touched', async () => {
+    await openDetail({ ...detail, status: 'no_show' });
+
+    expect(screen.getByText(/A booking that is no show cannot be changed/)).toBeInTheDocument();
+});
+
+test('names the reason a booking was cancelled', async () => {
+    await openDetail({ ...detail, status: 'cancelled', cancel_reason: 'Dock out of service' });
+
+    expect(screen.getByText('Reason for the cancellation')).toBeInTheDocument();
+    expect(screen.getByText('Dock out of service')).toBeInTheDocument();
+});
+
+test('walks the history from booking to change', async () => {
+    await openDetail({
+        ...detail,
+        history: [
+            { from_status: null, to_status: 'booked', by: 'Lena Supplier', note: null, created_at: '2027-06-01T08:00:00Z' },
+            {
+                from_status: 'booked',
+                to_status: 'booked',
+                by: 'Demo Admin',
+                note: 'Moved from 01.06.2027 10:00 to 02.06.2027 06:00 (Dock maintenance)',
+                created_at: '2027-06-01T09:00:00Z',
+            },
+        ],
+    });
+
+    expect(screen.getAllByText('Booked').length).toBeGreaterThan(0);
+    expect(screen.getByText('Changed')).toBeInTheDocument();
+    expect(screen.getByText(/Dock maintenance/)).toBeInTheDocument();
 });

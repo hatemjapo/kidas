@@ -32,6 +32,10 @@ class BookingResource extends JsonResource
             'plate_mismatch' => $this->plate_mismatch,
             'cancelled_at' => $this->cancelled_at?->toIso8601ZuluString(),
             'cancel_reason' => $this->cancel_reason,
+            'change_deadline_at' => $this->starts_at
+                ->copy()
+                ->subHours((int) config('booking.change_deadline_hours'))
+                ->toIso8601ZuluString(),
             'history' => BookingEventResource::collection($this->whenLoaded('events')),
         ];
     }

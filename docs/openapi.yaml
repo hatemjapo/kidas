@@ -1140,6 +1140,10 @@ components:
         cancel_reason:
           type: string
           nullable: true
+        change_deadline_at:
+          type: string
+          format: date-time
+          description: Until when a supplier may move or cancel this booking themselves.
     BookingEvent:
       type: object
       properties:
