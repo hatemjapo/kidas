@@ -316,8 +316,7 @@ Each of these implements one screen from the canvas; they can run in parallel on
 Out of scope: new features, API changes, a dark mode and real-time updates (E8-S2 stays skipped).
 - **UI language** – settled: the interface stays **English**, like the README, the code, the API messages and the tests.
   The German copy on the canvas is read as a sketch, not as wording.
-- **Booking number** – the design shows "Booking #142"; it has to be settled whether the plain id is shown or a
-  formatted reference.
+- **Booking number** – settled: the detail page shows the plain id as `Booking #7`; there is no separate reference.
 - **Icon source** – settled: **own inline SVGs** (24 px grid, 2 px stroke), no icon package.
 
 ### Future ideas
