@@ -303,17 +303,9 @@ Each of these implements one screen from the canvas; they can run in parallel on
   dashboard per role, the bookings list with status chips and pagination, profile and vehicles, and the admin booking
   with its supplier field; empty states with one sentence and the next action; the 404 and "not allowed" screens inside
   the shell; the dialog is designed on the canvas before it is built.
-- **E11-S9 (N) Brand colour in the Filament panel** – switching between `/admin` and the app is not jarring.
-  *AC:* panel primary colour set to `#42996F` in the panel provider; Inter as the panel font, the KiDas logo mark as
-  brand logo and favicon; the day calendar dots and the supplier decision buttons use the brand and danger colours.
-- **E11-S10 (M) Accessibility and responsive pass** – nobody is locked out of booking or handling.
-  *AC:* an automated check on the main pages with no violations; a manual keyboard pass (tab order, visible focus,
-  dialogs trapping focus and returning it); a contrast check for every token pair in use; the pages checked at 375, 768,
-  1024 and 1440 px; status never told by colour alone, every block and chip also carries a word; the README "Frontend"
-  section describes the tokens, the `ui/` components and `statusStyles.js`.
 
 #### Out of scope and open points
-Out of scope: new features, API changes, a dark mode and real-time updates (E8-S2 stays skipped).
+Out of scope: new features, API changes, a dark mode and real-time updates (E8-S2 stays skipped). The Filament panel keeps its own colour; it is an internal tool and not part of the product people see.
 - **UI language** – settled: the interface stays **English**, like the README, the code, the API messages and the tests.
   The German copy on the canvas is read as a sketch, not as wording.
 - **Booking number** – settled: the detail page shows the plain id as `Booking #7`; there is no separate reference.

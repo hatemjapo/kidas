@@ -9,6 +9,7 @@ use App\Models\Dock;
 use App\Models\DockDayUsage;
 use App\Models\OpeningDefault;
 use App\Models\ShiftDefault;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -19,10 +20,9 @@ class ResolveDayDefaults
      */
     public function __invoke(CarbonInterface $date): array
     {
-        $day = CalendarDay::query()
-            ->where('date', $date->toDateString())
-            ->with('dockUsages')
-            ->first();
+        $day = CalendarDay::getDayForDate(CarbonImmutable::parse($date->toDateString()));
+
+        $day?->loadMissing('dockUsages');
 
         return $day instanceof CalendarDay
             ? $this->fromDay($day)
@@ -95,6 +95,6 @@ class ResolveDayDefaults
      */
     private function docks()
     {
-        return Dock::query()->where('is_active', true)->orderBy('number')->get();
+        return Dock::getActiveDocks();
     }
 }
