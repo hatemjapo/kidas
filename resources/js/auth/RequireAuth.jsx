@@ -5,7 +5,7 @@ export default function RequireAuth() {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <p className="px-6 py-10 text-sm text-slate-500">Loading…</p>;
+        return <p className="px-6 py-10 text-sm text-muted">Loading…</p>;
     }
 
     if (user === null) {

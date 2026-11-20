@@ -72,6 +72,24 @@ class CalendarDay extends Model
             ->whereDate('date', '>=', $from->setTimezone((string) config('booking.timezone'))->toDateString());
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function getReleasedDatesInMonth(CarbonImmutable $month): array
+    {
+        return self::query()
+            ->whereBetween('date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+            ->where('is_released', true)
+            ->pluck('date')
+            ->map(fn ($date): string => $date->toDateString())
+            ->all();
+    }
+
+    public static function getDayForDate(CarbonImmutable $date): ?self
+    {
+        return self::query()->where('date', $date->toDateString())->first();
+    }
+
     public static function getBookableDayForDate(CarbonImmutable $date): ?self
     {
         return self::query()

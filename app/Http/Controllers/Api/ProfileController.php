@@ -27,6 +27,7 @@ class ProfileController extends Controller
             $request->string('name')->toString(),
             $request->string('company_name')->toString(),
             $request->string('company_phone')->toString(),
+            $request->input('driver_phone') === null ? null : $request->string('driver_phone')->toString(),
         );
 
         return new ProfileResource($supplier);

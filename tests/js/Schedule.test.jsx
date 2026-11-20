@@ -69,35 +69,117 @@ test('asks for today when it opens', async () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/schedule?date=2027-06-02'));
 });
 
-test('shows a row for every dock, switched off ones included', async () => {
+test('names the day it is showing', async () => {
+    render(<Schedule />);
+
+    expect(await screen.findByRole('heading', { name: 'Wednesday, 2 June 2027', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('Dock schedule')).toBeInTheDocument();
+});
+
+test('shows a column for every dock and what it serves', async () => {
     render(<Schedule />);
 
     expect(await screen.findByText('Dock 1')).toBeInTheDocument();
     expect(screen.getByText('Dock 2')).toBeInTheDocument();
     expect(screen.getByText('Dock 3')).toBeInTheDocument();
-    expect(screen.getByText('(off)')).toBeInTheDocument();
+    expect(screen.getByText('Out of service')).toBeInTheDocument();
+    expect(screen.getAllByText('Deliveries / Pickups')).toHaveLength(2);
 });
 
-test('shows the window of the day', async () => {
+test('names a dock that serves one kind all day by that kind', async () => {
+    api.get.mockResolvedValue(
+        schedule([{ number: 1, is_active: true, usage: { early: 'outbound', late: 'outbound' }, bookings: [] }])
+    );
+
     render(<Schedule />);
 
-    expect(await screen.findByText(/06:00 – 18:00/)).toBeInTheDocument();
+    expect(await screen.findByText('Pickups')).toBeInTheDocument();
+});
+
+test('counts the day in four numbers', async () => {
+    api.get.mockResolvedValue(
+        schedule([
+            dock(1, [booking, { ...booking, id: 8, status: 'in_progress' }]),
+            dock(2, [
+                { ...booking, id: 9, status: 'completed' },
+                { ...booking, id: 10, status: 'arrived' },
+                { ...booking, id: 11, status: 'no_show' },
+            ]),
+        ])
+    );
+
+    render(<Schedule />);
+
+    expect(await screen.findByText('Expected')).toBeInTheDocument();
+
+    const tile = (label) => screen.getAllByText(label)[0].parentElement;
+
+    expect(tile('Expected')).toHaveTextContent('1');
+    expect(tile('At the dock or waiting')).toHaveTextContent('2');
+    expect(tile('Completed')).toHaveTextContent('1');
+    expect(tile('No show')).toHaveTextContent('1');
+});
+
+test('explains the colours it uses', async () => {
+    render(<Schedule />);
+
+    expect(await screen.findByText('Delivery')).toBeInTheDocument();
+    ['Pickup', 'Arrived', 'In progress', 'Completed', 'No show'].forEach((label) => {
+        expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    });
 });
 
 test('puts the booking where it belongs on the timeline', async () => {
     render(<Schedule />);
 
-    const block = await screen.findByTitle(/Nordfracht GmbH/);
+    const block = await screen.findByRole('button', { name: /Nordfracht GmbH/ });
 
-    expect(block).toHaveTextContent('09:00 Nordfracht GmbH');
+    expect(block).toHaveTextContent('09:00–09:45');
     expect(block.style.gridRow).toBe('14 / span 3');
     expect(block.style.gridColumn).toBe('2');
 });
 
-test('marks the type of traffic', async () => {
+test('says everything about a block in its name', async () => {
     render(<Schedule />);
 
-    expect(await screen.findByTitle(/Nordfracht GmbH/)).toHaveClass('bg-sky-100');
+    expect(
+        await screen.findByRole('button', {
+            name: '09:00 to 09:45, dock 1, Nordfracht GmbH, 24 pallets, Booked',
+        })
+    ).toBeInTheDocument();
+});
+
+test('writes pallets and status into a block that has room', async () => {
+    render(<Schedule />);
+
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).toHaveTextContent('24 pal. · Booked');
+});
+
+test('leaves a short block with the time and the company', async () => {
+    api.get.mockResolvedValue(
+        schedule([dock(1, [{ ...booking, ends_at: '2027-06-02T07:15:00Z' }])])
+    );
+
+    render(<Schedule />);
+
+    const block = await screen.findByRole('button', { name: /Nordfracht GmbH/ });
+
+    expect(block).toHaveTextContent('09:00–09:15');
+    expect(block).not.toHaveTextContent('pal.');
+});
+
+test('marks a delivery in the brand tint', async () => {
+    render(<Schedule />);
+
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).toHaveClass('bg-brand-50');
+});
+
+test('marks a pickup in its own tint', async () => {
+    api.get.mockResolvedValue(schedule([dock(1, [{ ...booking, type: 'outbound' }])]));
+
+    render(<Schedule />);
+
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).toHaveClass('bg-outbound-50');
 });
 
 test('marks a booking that is being handled', async () => {
@@ -105,7 +187,32 @@ test('marks a booking that is being handled', async () => {
 
     render(<Schedule />);
 
-    expect(await screen.findByTitle(/Nordfracht GmbH/)).toHaveClass('ring-blue-500');
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).toHaveClass('bg-brand-700');
+});
+
+test('hatches a dock that is switched off', async () => {
+    const { container } = render(<Schedule />);
+
+    await screen.findByText('Dock 1');
+
+    expect(container.querySelector('[class*="repeating-linear-gradient"]')).toBeInTheDocument();
+});
+
+test('draws the current time across the day', async () => {
+    const { container } = render(<Schedule />);
+
+    await screen.findByText('Dock 1');
+
+    expect(container.querySelector('.bg-now')).toHaveTextContent('11:00');
+});
+
+test('draws no current time on another day', async () => {
+    const { container } = render(<Schedule />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Next day' }));
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/schedule?date=2027-06-03'));
+    await waitFor(() => expect(container.querySelector('.bg-now')).toBeNull());
 });
 
 test('walks to the next day and back', async () => {
@@ -134,7 +241,7 @@ test('says when a day is not released', async () => {
 
     render(<Schedule />);
 
-    expect(await screen.findByText(/not released for booking/)).toBeInTheDocument();
+    expect(await screen.findByText(/not been released for booking/)).toBeInTheDocument();
 });
 
 test('says when a day is closed', async () => {
@@ -142,7 +249,7 @@ test('says when a day is closed', async () => {
 
     render(<Schedule />);
 
-    expect(await screen.findByText(/closed/)).toBeInTheDocument();
+    expect(await screen.findByText(/closed on this day/)).toBeInTheDocument();
 });
 
 test('says so when the schedule cannot be loaded', async () => {
@@ -153,22 +260,24 @@ test('says so when the schedule cannot be loaded', async () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
 });
 
-test('opens a booking from the timeline', async () => {
+test('opens a booking in a dialog', async () => {
     render(<Schedule />);
 
-    fireEvent.click(await screen.findByTitle(/Nordfracht GmbH/));
+    fireEvent.click(await screen.findByRole('button', { name: /Nordfracht GmbH/ }));
 
-    expect(await screen.findByLabelText('License plate that arrived')).toBeInTheDocument();
-    expect(screen.getByText(/dock 1 · Nordfracht GmbH/)).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+
+    expect(dialog).toHaveAccessibleName('09:00 · Dock 1 · Nordfracht GmbH');
+    expect(screen.getByLabelText('License plate that arrived')).toBeInTheDocument();
 });
 
-test('closes the panel again', async () => {
+test('closes the dialog again', async () => {
     render(<Schedule />);
 
-    fireEvent.click(await screen.findByTitle(/Nordfracht GmbH/));
-    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Nordfracht GmbH/ }));
+    fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(screen.queryByLabelText('License plate that arrived')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 test('marks a booking whose plate is in question', async () => {
@@ -178,7 +287,17 @@ test('marks a booking whose plate is in question', async () => {
 
     render(<Schedule />);
 
-    expect(await screen.findByTitle(/Nordfracht GmbH/)).toHaveTextContent('⚠');
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).toHaveTextContent('Check plate');
+});
+
+test('says nothing about a plate that was confirmed', async () => {
+    api.get.mockResolvedValue(
+        schedule([dock(1, [{ ...booking, status: 'arrived', plate_mismatch: true, plate_verified: true }])])
+    );
+
+    render(<Schedule />);
+
+    expect(await screen.findByRole('button', { name: /Nordfracht GmbH/ })).not.toHaveTextContent('Check plate');
 });
 
 test('reloads the day after an arrival was registered', async () => {
@@ -186,7 +305,7 @@ test('reloads the day after an arrival was registered', async () => {
 
     render(<Schedule />);
 
-    fireEvent.click(await screen.findByTitle(/Nordfracht GmbH/));
+    fireEvent.click(await screen.findByRole('button', { name: /Nordfracht GmbH/ }));
 
     const before = api.get.mock.calls.filter(([url]) => url.startsWith('/schedule')).length;
 
@@ -198,38 +317,12 @@ test('reloads the day after an arrival was registered', async () => {
     );
 });
 
-test('puts the time down the left and the docks across the top', async () => {
+test('offers exactly one way to close the dialog', async () => {
     render(<Schedule />);
 
-    const hour = await screen.findByText('06:00');
+    fireEvent.click(await screen.findByRole('button', { name: /Nordfracht GmbH/ }));
 
-    expect(hour.style.gridColumn).toBe('1');
-    expect(hour.style.gridRow).toBe('2 / span 4');
-
-    const head = screen.getByText('Dock 2');
-
-    expect(head.style.gridColumn).toBe('3');
-    expect(head.style.gridRow).toBe('1');
-});
-
-test('opens the booking in a dialog', async () => {
-    render(<Schedule />);
-
-    fireEvent.click(await screen.findByTitle(/Nordfracht GmbH/));
-
-    const dialog = await screen.findByRole('dialog');
-
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveTextContent('Nordfracht GmbH');
-});
-
-test('closes the dialog on escape', async () => {
-    render(<Schedule />);
-
-    fireEvent.click(await screen.findByTitle(/Nordfracht GmbH/));
     await screen.findByRole('dialog');
 
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
 });

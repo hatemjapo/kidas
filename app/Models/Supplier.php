@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-#[Fillable(['company_name', 'company_phone'])]
+#[Fillable(['company_name', 'company_phone', 'driver_phone'])]
 class Supplier extends Model
 {
     /** @use HasFactory<SupplierFactory> */

@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import api, { csrf } from '../lib/api';
+import Alert from './ui/Alert';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import IconButton from './ui/IconButton';
+import TextField from './ui/TextField';
 
 export default function VehicleList() {
     const [vehicles, setVehicles] = useState([]);
@@ -71,81 +76,68 @@ export default function VehicleList() {
     }
 
     if (loading) {
-        return <p className="text-sm text-slate-500">Loading vehicles…</p>;
+        return <p className="text-sm text-muted">Loading vehicles…</p>;
     }
 
     return (
-        <section className="mt-10">
-            <h2 className="text-base font-semibold tracking-tight">Your vehicles</h2>
-
-            <p className="mt-1 text-sm text-slate-500">
+        <Card title="Your vehicles">
+            <p className="text-sm text-muted">
                 Saved license plates to pick from when booking. Spaces and hyphens are removed.
             </p>
 
-            {error && (
-                <p role="alert" className="mt-4 text-sm text-red-600">
-                    {error}
-                </p>
-            )}
+            {error && <Alert className="mt-4">{error}</Alert>}
 
             {vehicles.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">No vehicles saved yet.</p>
+                <p className="mt-4 text-sm text-muted">
+                    No plates saved yet. Add the one you use most, and booking will offer it.
+                </p>
             ) : (
-                <ul className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
+                <ul className="mt-4 space-y-2">
                     {vehicles.map((vehicle) => (
-                        <li key={vehicle.id} className="flex items-center justify-between py-2">
-                            <span className="font-mono text-sm">{vehicle.license_plate}</span>
+                        <li
+                            key={vehicle.id}
+                            className="flex items-center justify-between gap-4 rounded-tile border border-line px-4 py-2"
+                        >
+                            <span className="font-mono text-sm font-semibold text-ink">{vehicle.license_plate}</span>
 
-                            <button
-                                type="button"
+                            <IconButton
+                                label={`Remove ${vehicle.license_plate}`}
                                 onClick={() => handleRemove(vehicle)}
-                                aria-label={`Remove ${vehicle.license_plate}`}
-                                title={`Remove ${vehicle.license_plate}`}
-                                className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                                className="border-0 hover:bg-danger-50 hover:text-danger-700"
                             >
                                 <svg
                                     aria-hidden="true"
+                                    focusable="false"
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    className="h-5 w-5"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="size-5"
                                 >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                    />
+                                    <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13M10 11v6M14 11v6" />
                                 </svg>
-                            </button>
+                            </IconButton>
                         </li>
                     ))}
                 </ul>
             )}
 
-            <form onSubmit={handleAdd} className="mt-4 flex items-end gap-2" noValidate>
-                <div className="flex flex-1 flex-col gap-1">
-                    <label htmlFor="license_plate" className="text-sm font-medium text-slate-700">
-                        License plate
-                    </label>
-                    <input
-                        id="license_plate"
-                        name="license_plate"
-                        type="text"
-                        value={plate}
-                        onChange={(event) => setPlate(event.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                </div>
+            <form onSubmit={handleAdd} className="mt-5 flex flex-col gap-4" noValidate>
+                <TextField
+                    id="license_plate"
+                    name="license_plate"
+                    label="License plate"
+                    placeholder="HH-AB 1234"
+                    value={plate}
+                    onChange={(event) => setPlate(event.target.value)}
+                />
 
-                <button
-                    type="submit"
-                    disabled={submitting}
-                    className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
+                <Button type="submit" loading={submitting} className="self-start">
                     Add
-                </button>
+                </Button>
             </form>
-        </section>
+        </Card>
     );
 }

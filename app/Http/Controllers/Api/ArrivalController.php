@@ -12,42 +12,42 @@ use App\Models\User;
 
 class ArrivalController extends Controller
 {
-    public function store(RegisterArrivalRequest $request, int $booking, RegisterArrival $registerArrival): ScheduleBookingResource
+    public function store(RegisterArrivalRequest $request, int $bookingId, RegisterArrival $registerArrival): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
         $arrived = $registerArrival->registerArrivalForBooking(
             $user,
-            Booking::getBookingForWarehouse($booking),
+            Booking::getBookingForWarehouse($bookingId),
             $request->string('license_plate')->toString(),
         );
 
         return new ScheduleBookingResource($arrived);
     }
 
-    public function update(RegisterArrivalRequest $request, int $booking, RegisterArrival $registerArrival): ScheduleBookingResource
+    public function update(RegisterArrivalRequest $request, int $bookingId, RegisterArrival $registerArrival): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
         $corrected = $registerArrival->correctArrivedPlateForBooking(
             $user,
-            Booking::getBookingForWarehouse($booking),
+            Booking::getBookingForWarehouse($bookingId),
             $request->string('license_plate')->toString(),
         );
 
         return new ScheduleBookingResource($corrected);
     }
 
-    public function verify(VerifyPlateRequest $request, int $booking, RegisterArrival $registerArrival): ScheduleBookingResource
+    public function verify(VerifyPlateRequest $request, int $bookingId, RegisterArrival $registerArrival): ScheduleBookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
         $verified = $registerArrival->verifyPlateForBooking(
             $user,
-            Booking::getBookingForWarehouse($booking),
+            Booking::getBookingForWarehouse($bookingId),
             $request->input('note') === null ? null : $request->string('note')->toString(),
         );
 

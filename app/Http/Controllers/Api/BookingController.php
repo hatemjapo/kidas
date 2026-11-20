@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Bookings\CancelBooking;
+use App\Actions\Bookings\CheckDockReadiness;
 use App\Actions\Bookings\CreateBooking;
 use App\Actions\Bookings\RescheduleBooking;
 use App\Data\NewBooking;
@@ -12,6 +13,7 @@ use App\Http\Requests\Api\CancelBookingRequest;
 use App\Http\Requests\Api\RescheduleBookingRequest;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\DockReadinessResource;
 use App\Models\Supplier;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -28,9 +30,16 @@ class BookingController extends Controller
         );
     }
 
-    public function show(Request $request, int $booking): BookingResource
+    public function show(Request $request, int $bookingId): BookingResource
     {
-        return new BookingResource($this->supplierOf($request)->getBookingWithHistory($booking));
+        return new BookingResource($this->supplierOf($request)->getBookingWithHistory($bookingId));
+    }
+
+    public function status(Request $request, int $bookingId, CheckDockReadiness $checkDockReadiness): DockReadinessResource
+    {
+        $booking = $this->supplierOf($request)->getBookingWithHistory($bookingId);
+
+        return new DockReadinessResource($checkDockReadiness->getReadinessForBooking($booking));
     }
 
     public function store(StoreBookingRequest $request, CreateBooking $createBooking): JsonResponse
@@ -53,18 +62,18 @@ class BookingController extends Controller
         return (new BookingResource($booking->load('dock')))->response()->setStatusCode(201);
     }
 
-    public function update(RescheduleBookingRequest $request, int $booking, RescheduleBooking $rescheduleBooking): BookingResource
+    public function update(RescheduleBookingRequest $request, int $bookingId, RescheduleBooking $rescheduleBooking): BookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
-        $found = $this->supplierOf($request)->getBookingWithHistory($booking);
+        $booking = $this->supplierOf($request)->getBookingWithHistory($bookingId);
 
         $startsAt = $request->date('starts_at');
 
         $moved = $rescheduleBooking->rescheduleBookingForSupplier(
             $user,
-            $found,
+            $booking,
             $startsAt === null ? null : CarbonImmutable::parse($startsAt)->utc(),
             $request->input('pallets') === null ? null : $request->integer('pallets'),
         );
@@ -72,14 +81,14 @@ class BookingController extends Controller
         return new BookingResource($moved->load('dock'));
     }
 
-    public function cancel(CancelBookingRequest $request, int $booking, CancelBooking $cancelBooking): BookingResource
+    public function cancel(CancelBookingRequest $request, int $bookingId, CancelBooking $cancelBooking): BookingResource
     {
         $user = $request->user();
         assert($user instanceof User);
 
         $cancelled = $cancelBooking->cancelBookingForSupplier(
             $user,
-            $this->supplierOf($request)->getBookingWithHistory($booking),
+            $this->supplierOf($request)->getBookingWithHistory($bookingId),
             $request->input('reason') === null ? null : $request->string('reason')->toString(),
         );
 

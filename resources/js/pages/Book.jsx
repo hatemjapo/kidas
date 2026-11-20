@@ -2,8 +2,23 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import SlotPicker from '../components/SlotPicker';
 import { useAuth } from '../auth/AuthContext';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import InfoBox from '../components/ui/InfoBox';
+import NumberField from '../components/ui/NumberField';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import Select from '../components/ui/Select';
+import TextField from '../components/ui/TextField';
 import api, { csrf } from '../lib/api';
-import { formatDate, formatTime } from '../lib/datetime';
+import { formatLongDate, formatTime } from '../lib/datetime';
+
+const types = [
+    { value: 'inbound', label: 'Delivery' },
+    { value: 'outbound', label: 'Pickup' },
+];
+
+const newPlate = 'new';
 
 export default function Book() {
     const { role } = useAuth();
@@ -11,10 +26,11 @@ export default function Book() {
 
     const [suppliers, setSuppliers] = useState([]);
     const [supplierId, setSupplierId] = useState('');
-    const [step, setStep] = useState('load');
     const [type, setType] = useState('inbound');
     const [pallets, setPallets] = useState(10);
+    const [duration, setDuration] = useState(null);
     const [slot, setSlot] = useState(null);
+    const [searching, setSearching] = useState(false);
     const [pickerKey, setPickerKey] = useState(0);
     const [vehicles, setVehicles] = useState([]);
     const [details, setDetails] = useState({ order_number: '', driver_phone: '', vehicle_id: '', license_plate: '' });
@@ -22,6 +38,28 @@ export default function Book() {
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (booksForSomebodyElse) {
+            return undefined;
+        }
+
+        let active = true;
+
+        api.get('/profile')
+            .then((response) => {
+                const profile = response.data.data ?? response.data;
+
+                if (active && typeof profile.driver_phone === 'string') {
+                    setDetails((details) => ({ ...details, driver_phone: profile.driver_phone }));
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            active = false;
+        };
+    }, [booksForSomebodyElse]);
 
     useEffect(() => {
         if (! booksForSomebodyElse) {
@@ -75,12 +113,6 @@ export default function Book() {
         };
     }, [booksForSomebodyElse, supplierId]);
 
-    function pickSlot(picked) {
-        setSlot(picked);
-        setMessage(null);
-        setStep('details');
-    }
-
     async function submitBooking(event) {
         event.preventDefault();
 
@@ -98,12 +130,11 @@ export default function Book() {
                 starts_at: slot.starts_at,
                 order_number: details.order_number,
                 driver_phone: details.driver_phone,
-                vehicle_id: details.vehicle_id === '' ? null : Number(details.vehicle_id),
-                license_plate: details.vehicle_id === '' ? details.license_plate : null,
+                vehicle_id: details.vehicle_id === newPlate || details.vehicle_id === '' ? null : Number(details.vehicle_id),
+                license_plate: details.vehicle_id === newPlate || details.vehicle_id === '' ? details.license_plate : null,
             });
 
             setBooking(response.data.data ?? response.data);
-            setStep('done');
         } catch (failure) {
             const status = failure.response?.status;
 
@@ -111,8 +142,8 @@ export default function Book() {
                 setErrors(failure.response.data.errors ?? {});
             } else if (status === 409) {
                 setMessage(failure.response.data.message ?? 'This slot has just been taken.');
+                setSlot(null);
                 setPickerKey((key) => key + 1);
-                setStep('slot');
             } else {
                 setMessage('The booking could not be saved. Please try again.');
             }
@@ -121,33 +152,37 @@ export default function Book() {
         }
     }
 
-    if (step === 'done') {
+    if (booking !== null) {
         return (
-            <div className="max-w-md space-y-4">
-                <h1 className="text-2xl font-semibold tracking-tight">Slot booked</h1>
+            <div className="max-w-xl space-y-6">
+                <div>
+                    <p className="text-sm font-semibold tracking-wide text-brand-700 uppercase">Slot booked</p>
+                    <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink">
+                        Dock {booking.dock_number}
+                    </h1>
+                </div>
 
-                <p role="status" className="text-sm text-slate-600">
-                    Please arrive at dock {booking.dock_number} on {formatDate(booking.starts_at)} at{' '}
-                    {formatTime(booking.starts_at)}.
-                </p>
+                <Card>
+                    <p role="status" className="text-[15px] text-ink">
+                        Please arrive at dock <strong>{booking.dock_number}</strong> on{' '}
+                        {formatLongDate(booking.starts_at)} at {formatTime(booking.starts_at)}.
+                    </p>
 
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                    <dt className="text-slate-500">Dock</dt>
-                    <dd className="text-lg font-semibold">{booking.dock_number}</dd>
+                    <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                        <dt className="text-muted">Time</dt>
+                        <dd data-numeric>
+                            {formatTime(booking.starts_at)} – {formatTime(booking.ends_at)}
+                        </dd>
 
-                    <dt className="text-slate-500">Time</dt>
-                    <dd>
-                        {formatTime(booking.starts_at)} – {formatTime(booking.ends_at)}
-                    </dd>
+                        <dt className="text-muted">Pallets</dt>
+                        <dd data-numeric>{booking.pallets}</dd>
 
-                    <dt className="text-slate-500">Pallets</dt>
-                    <dd>{booking.pallets}</dd>
+                        <dt className="text-muted">License plate</dt>
+                        <dd className="font-mono">{booking.license_plate}</dd>
+                    </dl>
+                </Card>
 
-                    <dt className="text-slate-500">License plate</dt>
-                    <dd className="font-mono">{booking.license_plate}</dd>
-                </dl>
-
-                <Link to="/bookings" className="inline-block text-sm font-medium text-slate-900 underline">
+                <Link to="/bookings" className="inline-block text-sm font-semibold text-brand-700 hover:text-brand-800">
                     All my bookings
                 </Link>
             </div>
@@ -155,205 +190,200 @@ export default function Book() {
     }
 
     return (
-        <div className="max-w-3xl space-y-6">
-            <h1 className="text-2xl font-semibold tracking-tight">Book a slot</h1>
-
-            {message && (
-                <p
-                    role="alert"
-                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                >
-                    {message}
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-ink">Book a slot</h1>
+                <p className="mt-2 text-[15px] text-muted">
+                    Choose what you bring and how much of it, then a free start time. The dock is assigned when you
+                    book.
                 </p>
-            )}
+            </div>
 
-            <section className="flex flex-wrap items-end gap-4">
-                {booksForSomebodyElse && (
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="supplier_id" className="text-sm font-medium text-slate-700">
-                            Supplier
-                        </label>
-                        <select
-                            id="supplier_id"
-                            value={supplierId}
-                            onChange={(event) => {
-                                setSupplierId(event.target.value);
-                                setDetails({
-                                    order_number: '',
-                                    driver_phone: '',
-                                    vehicle_id: '',
-                                    license_plate: '',
-                                });
-                                setStep('load');
-                            }}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        >
-                            <option value="">Please choose</option>
-                            {suppliers.map((supplier) => (
-                                <option key={supplier.id} value={supplier.id}>
-                                    {supplier.company_name}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.supplier_id && (
-                            <p className="text-sm text-red-600">{errors.supplier_id[0]}</p>
-                        )}
-                    </div>
-                )}
+            {message && <Alert>{message}</Alert>}
 
-                <div className="flex flex-col gap-1">
-                    <label htmlFor="type" className="text-sm font-medium text-slate-700">
-                        I want to
-                    </label>
-                    <select
-                        id="type"
-                        value={type}
-                        onChange={(event) => {
-                            setType(event.target.value);
-                            setStep('load');
-                        }}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    >
-                        <option value="inbound">deliver</option>
-                        <option value="outbound">pick up</option>
-                    </select>
-                </div>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="space-y-6">
+                    <Card>
+                        <div className="flex flex-wrap items-end gap-6">
+                            {booksForSomebodyElse && (
+                                <Select
+                                    id="supplier_id"
+                                    label="Supplier"
+                                    value={supplierId}
+                                    error={errors.supplier_id?.[0]}
+                                    onChange={(event) => {
+                                        setSupplierId(event.target.value);
+                                        setSlot(null);
+                                        setSearching(false);
+                                        setDetails({
+                                            order_number: '',
+                                            driver_phone: '',
+                                            vehicle_id: '',
+                                            license_plate: '',
+                                        });
+                                    }}
+                                    className="w-56"
+                                >
+                                    <option value="">Please choose</option>
+                                    {suppliers.map((supplier) => (
+                                        <option key={supplier.id} value={supplier.id}>
+                                            {supplier.company_name}
+                                        </option>
+                                    ))}
+                                </Select>
+                            )}
 
-                <div className="flex flex-col gap-1">
-                    <label htmlFor="pallets" className="text-sm font-medium text-slate-700">
-                        Pallets
-                    </label>
-                    <input
-                        id="pallets"
-                        type="number"
-                        min="1"
-                        max="70"
-                        value={pallets}
-                        onChange={(event) => {
-                            setPallets(Number(event.target.value));
-                            setStep('load');
-                        }}
-                        className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                </div>
-
-                <button
-                    type="button"
-                    disabled={booksForSomebodyElse && supplierId === ''}
-                    onClick={() => {
-                        setPickerKey((key) => key + 1);
-                        setStep('slot');
-                    }}
-                    className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                    Show free slots
-                </button>
-            </section>
-
-            {step === 'slot' && (
-                <SlotPicker key={pickerKey} type={type} pallets={pallets} onPick={pickSlot} />
-            )}
-
-            {step === 'details' && (
-                <form onSubmit={submitBooking} className="space-y-4" noValidate>
-                    <p className="text-sm text-slate-600">
-                        {formatDate(slot.starts_at)}, {formatTime(slot.starts_at)} –{' '}
-                        {formatTime(slot.ends_at)}
-                    </p>
-
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="order_number" className="text-sm font-medium text-slate-700">
-                            Order number
-                        </label>
-                        <input
-                            id="order_number"
-                            value={details.order_number}
-                            onChange={(event) =>
-                                setDetails({ ...details, order_number: event.target.value })
-                            }
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {errors.order_number && (
-                            <p className="text-sm text-red-600">{errors.order_number[0]}</p>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="driver_phone" className="text-sm font-medium text-slate-700">
-                            Driver phone
-                        </label>
-                        <input
-                            id="driver_phone"
-                            value={details.driver_phone}
-                            onChange={(event) =>
-                                setDetails({ ...details, driver_phone: event.target.value })
-                            }
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {errors.driver_phone && (
-                            <p className="text-sm text-red-600">{errors.driver_phone[0]}</p>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="vehicle_id" className="text-sm font-medium text-slate-700">
-                            Vehicle
-                        </label>
-                        <select
-                            id="vehicle_id"
-                            value={details.vehicle_id}
-                            onChange={(event) =>
-                                setDetails({ ...details, vehicle_id: event.target.value })
-                            }
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        >
-                            <option value="">Another license plate</option>
-                            {vehicles.map((vehicle) => (
-                                <option key={vehicle.id} value={vehicle.id}>
-                                    {vehicle.license_plate}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {details.vehicle_id === '' && (
-                        <div className="flex flex-col gap-1">
-                            <label htmlFor="license_plate" className="text-sm font-medium text-slate-700">
-                                License plate
-                            </label>
-                            <input
-                                id="license_plate"
-                                value={details.license_plate}
-                                onChange={(event) =>
-                                    setDetails({ ...details, license_plate: event.target.value })
-                                }
-                                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            <SegmentedControl
+                                name="type"
+                                label="What for"
+                                options={types}
+                                value={type}
+                                onChange={(chosen) => {
+                                    setType(chosen);
+                                    setSlot(null);
+                                    setSearching(false);
+                                }}
                             />
-                            {errors.license_plate && (
-                                <p className="text-sm text-red-600">{errors.license_plate[0]}</p>
+
+                            <NumberField
+                                id="pallets"
+                                label="Pallets"
+                                min="1"
+                                max="70"
+                                value={pallets}
+                                error={errors.pallets?.[0]}
+                                onChange={(event) => {
+                                    setPallets(Number(event.target.value));
+                                    setSlot(null);
+                                    setSearching(false);
+                                }}
+                            />
+
+                            {searching && duration !== null && (
+                                <p className="flex h-12 items-center rounded-control bg-brand-50 px-4 text-sm text-brand-800">
+                                    Blocks a dock for&nbsp;<strong>{duration} minutes</strong>
+                                </p>
+                            )}
+
+                            {! searching && (
+                                <Button
+                                    onClick={() => {
+                                        setSearching(true);
+                                        setPickerKey((key) => key + 1);
+                                    }}
+                                    disabled={booksForSomebodyElse && supplierId === ''}
+                                >
+                                    Show free slots
+                                </Button>
                             )}
                         </div>
+                    </Card>
+
+                    {searching ? (
+                        <SlotPicker
+                            key={pickerKey}
+                            type={type}
+                            pallets={pallets}
+                            selected={slot}
+                            onDuration={setDuration}
+                            onPick={(picked) => {
+                                setSlot(picked);
+                                setMessage(null);
+                            }}
+                        />
+                    ) : (
+                        <Card title="Choose a day">
+                            <p className="text-sm text-muted">
+                                {booksForSomebodyElse && supplierId === ''
+                                    ? 'Choose the supplier, what they bring and how many pallets, then show the free slots.'
+                                    : 'Say what you bring and how many pallets, then show the free slots.'}
+                            </p>
+                        </Card>
                     )}
+                </div>
 
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
-                            {submitting ? 'Booking…' : 'Book this slot'}
-                        </button>
+                <form onSubmit={submitBooking} className="space-y-4" noValidate>
+                    <Card title="Your booking">
+                        {slot === null ? (
+                            <p className="rounded-tile bg-canvas p-4 text-sm text-muted">
+                                Pick a start time to see your booking here.
+                            </p>
+                        ) : (
+                            <div className="rounded-tile bg-brand-50 p-4">
+                                <p className="text-sm text-brand-800">
+                                    {types.find((kind) => kind.value === type).label} · {pallets} pallets
+                                </p>
+                                <p className="mt-1 font-bold text-ink">{formatLongDate(slot.starts_at)}</p>
+                                <p className="font-semibold text-brand-700" data-numeric>
+                                    {formatTime(slot.starts_at)} – {formatTime(slot.ends_at)}
+                                </p>
+                            </div>
+                        )}
 
-                        <button
-                            type="button"
-                            onClick={() => setStep('slot')}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                        >
-                            Pick another slot
-                        </button>
-                    </div>
+                        <div className="mt-5 space-y-4">
+                            <TextField
+                                id="order_number"
+                                label="Order number"
+                                placeholder="e.g. 4500123456"
+                                value={details.order_number}
+                                error={errors.order_number?.[0]}
+                                onChange={(event) => setDetails({ ...details, order_number: event.target.value })}
+                            />
+
+                            <TextField
+                                id="driver_phone"
+                                label="Driver phone"
+                                placeholder="+49 …"
+                                value={details.driver_phone}
+                                error={errors.driver_phone?.[0]}
+                                onChange={(event) => setDetails({ ...details, driver_phone: event.target.value })}
+                            />
+
+                            <Select
+                                id="vehicle_id"
+                                label="Vehicle"
+                                hint="A new plate is saved for the next time."
+                                value={details.vehicle_id}
+                                error={errors.vehicle_id?.[0]}
+                                onChange={(event) => setDetails({ ...details, vehicle_id: event.target.value })}
+                            >
+                                <option value="">Another plate</option>
+                                {vehicles.map((vehicle) => (
+                                    <option key={vehicle.id} value={vehicle.id}>
+                                        {vehicle.license_plate}
+                                    </option>
+                                ))}
+                            </Select>
+
+                            {details.vehicle_id === '' && (
+                                <TextField
+                                    id="license_plate"
+                                    label="License plate"
+                                    placeholder="HH-AB 1234"
+                                    value={details.license_plate}
+                                    error={errors.license_plate?.[0]}
+                                    onChange={(event) => setDetails({ ...details, license_plate: event.target.value })}
+                                />
+                            )}
+
+                            {errors.starts_at && <Alert>{errors.starts_at[0]}</Alert>}
+
+                            <Button
+                                type="submit"
+                                loading={submitting}
+                                disabled={slot === null || (booksForSomebodyElse && supplierId === '')}
+                                className="w-full"
+                            >
+                                Book this slot
+                            </Button>
+
+                            <p className="text-xs text-muted">
+                                Moving or cancelling is possible up to three hours before the slot.
+                            </p>
+                        </div>
+                    </Card>
                 </form>
-            )}
+            </div>
         </div>
     );
 }

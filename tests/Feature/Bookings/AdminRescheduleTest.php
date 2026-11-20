@@ -2,11 +2,8 @@
 
 use App\Enums\BookingStatus;
 use App\Enums\DockUsage;
-use App\Models\Booking;
-use App\Models\Dock;
 use App\Models\Supplier;
 use App\Models\User;
-use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 
 use function Pest\Laravel\actingAs;
@@ -17,34 +14,6 @@ use function Pest\Laravel\travelTo;
 beforeEach(function () {
     travelTo(CarbonImmutable::parse('2027-06-02 05:00', 'Europe/Berlin'));
 });
-
-function bookingOfSupplier(Supplier $supplier, string $start = '2027-06-02 10:00', int $pallets = 10): Booking
-{
-    $booking = new Booking;
-    $booking->type = DockUsage::Inbound;
-    $booking->dock_id = Dock::query()->where('number', 1)->firstOrFail()->id;
-    $booking->supplier_id = $supplier->id;
-    $booking->order_number = 'PO-4711';
-    $booking->pallets = $pallets;
-    $booking->license_plate = 'HHAB1234';
-    $booking->driver_phone = '+49 170 1234567';
-    $booking->starts_at = Carbon::parse($start, 'Europe/Berlin')->utc();
-    $booking->ends_at = Carbon::parse($start, 'Europe/Berlin')->addMinutes(30)->utc();
-    $booking->status = BookingStatus::Booked;
-    $booking->created_by = $supplier->user->id;
-    $booking->save();
-
-    return $booking;
-}
-
-function asAdmin(): User
-{
-    $user = User::factory()->admin()->create();
-
-    actingAs($user);
-
-    return $user;
-}
 
 test('moves a booking of any supplier', function () {
     openedDay();

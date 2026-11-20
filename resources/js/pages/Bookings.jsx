@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import BookingDetail from '../components/BookingDetail';
-import StatusBadge from '../components/StatusBadge';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import StatusChip from '../components/ui/StatusChip';
 import api from '../lib/api';
 import { formatDate, formatTime } from '../lib/datetime';
+
+const typeNames = {
+    inbound: 'Delivery',
+    outbound: 'Pickup',
+};
 
 export default function Bookings() {
     const [bookings, setBookings] = useState([]);
@@ -54,7 +63,7 @@ export default function Bookings() {
     }
 
     if (loading) {
-        return <p className="text-sm text-slate-500">Loading bookings…</p>;
+        return <p className="text-sm text-muted">Loading bookings…</p>;
     }
 
     if (selected !== null) {
@@ -71,35 +80,46 @@ export default function Bookings() {
     }
 
     return (
-        <div className="space-y-4">
-            <h1 className="text-2xl font-semibold tracking-tight">My bookings</h1>
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-ink">My bookings</h1>
+                <p className="mt-2 text-[15px] text-muted">Newest first. Open one to see its history and live status.</p>
+            </div>
 
-            {error && (
-                <p role="alert" className="text-sm text-red-600">
-                    {error}
-                </p>
-            )}
+            {error && <Alert>{error}</Alert>}
 
             {bookings.length === 0 ? (
-                <p className="text-sm text-slate-500">You have not booked a slot yet.</p>
+                <Card>
+                    <p className="text-[15px] text-ink">You have not booked a slot yet.</p>
+
+                    <Link
+                        to="/book"
+                        className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:text-brand-800"
+                    >
+                        Book a slot
+                    </Link>
+                </Card>
             ) : (
-                <ul className="divide-y divide-slate-200 border-y border-slate-200">
+                <ul className="space-y-3">
                     {bookings.map((booking) => (
                         <li key={booking.id}>
                             <button
                                 type="button"
                                 onClick={() => openBooking(booking)}
-                                className="flex w-full items-center justify-between gap-4 py-3 text-left text-sm hover:bg-slate-50"
+                                className="flex w-full flex-wrap items-center justify-between gap-4 rounded-card border border-line bg-white px-5 py-4 text-left hover:border-brand-500"
                             >
-                                <span className="font-medium">
-                                    {formatDate(booking.starts_at)}, {formatTime(booking.starts_at)}
+                                <span>
+                                    <span className="block font-semibold text-ink" data-numeric>
+                                        {formatDate(booking.starts_at)}, {formatTime(booking.starts_at)} –{' '}
+                                        {formatTime(booking.ends_at)}
+                                    </span>
+                                    <span className="block text-sm text-muted">
+                                        {typeNames[booking.type] ?? booking.type} · {booking.pallets} pallets · dock{' '}
+                                        {booking.dock_number} · {booking.order_number}
+                                    </span>
                                 </span>
 
-                                <span className="text-slate-500">
-                                    {booking.type} · {booking.pallets} pallets · dock {booking.dock_number}
-                                </span>
-
-                                <StatusBadge status={booking.status} />
+                                <StatusChip status={booking.status} type={booking.type} />
                             </button>
                         </li>
                     ))}
@@ -107,28 +127,28 @@ export default function Bookings() {
             )}
 
             {meta !== null && meta.last_page > 1 && (
-                <div className="flex items-center gap-3 text-sm">
-                    <button
-                        type="button"
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="secondary"
+                        size={40}
                         disabled={meta.current_page === 1}
                         onClick={() => setPage(meta.current_page - 1)}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 font-medium disabled:opacity-40"
                     >
                         Previous
-                    </button>
+                    </Button>
 
-                    <span className="text-slate-500">
+                    <span className="text-sm text-muted" data-numeric>
                         Page {meta.current_page} of {meta.last_page}
                     </span>
 
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
+                        size={40}
                         disabled={meta.current_page === meta.last_page}
                         onClick={() => setPage(meta.current_page + 1)}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 font-medium disabled:opacity-40"
                     >
                         Next
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

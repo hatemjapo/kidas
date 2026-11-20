@@ -21,6 +21,41 @@ class Dock extends Model
     use HasFactory;
 
     /**
+     * @return Collection<int, self>
+     */
+    public static function getActiveDocks(): Collection
+    {
+        return self::query()->where('is_active', true)->orderBy('number')->get();
+    }
+
+    public static function getDockForUsage(CalendarDay $day, Shift $shift, DockUsage $usage): ?self
+    {
+        return self::query()
+            ->where('is_active', true)
+            ->whereHas('dayUsages', fn (Builder $usages) => $usages
+                ->where('calendar_day_id', $day->id)
+                ->where('shift', $shift)
+                ->where('usage', $usage))
+            ->orderBy('number')
+            ->first();
+    }
+
+    public function getBookingThatHoldsTheDockNow(CarbonImmutable $now, int $exceptBookingId): ?Booking
+    {
+        return $this->bookings()
+            ->whereIn('status', [
+                BookingStatus::Booked->value,
+                BookingStatus::Arrived->value,
+                BookingStatus::InProgress->value,
+            ])
+            ->whereKeyNot($exceptBookingId)
+            ->where('starts_at', '<=', $now)
+            ->where('ends_at', '>', $now)
+            ->orderBy('ends_at')
+            ->first();
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
