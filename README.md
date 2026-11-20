@@ -170,7 +170,7 @@ A supplier may keep a default driver phone in their profile. The booking form st
 can type another one over it when a different driver comes; the booking then carries the number it was made with, and a
 later change to the profile leaves it alone.
 
-A supplier says what they want — inbound or outbound — and how many pallets they carry; the system answers with the days on which that fits and the start times of each. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
+A supplier says what they want — a delivery or a pickup — and how many pallets they carry, and asks for the free slots; the system answers with the days on which that fits and the start times of each, and says how long the load will block a dock. Changing the load drops the answer, because it was an answer to another question. A day is a tile with the number of free start times on it, the times themselves are grouped by early and late shift, and the booking grows in a panel beside them: the slot, the order number, the driver and the lorry, with a note that moving or cancelling stays possible up to three hours before. Five days at a time, and only days on which something is actually possible, so a weekend never shows up as an empty tile. The arrows page forward and back from the day on screen.
 
 A start time survives four filters: it lies inside the opening hours **and** inside a shift, the whole booking fits before the shift changes, at least one active dock carries that usage in that shift, and the start is at least three hours away. The grid runs in quarter hours, so a booking ending at 9:30 and one starting at 9:30 are both fine.
 
