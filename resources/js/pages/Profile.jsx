@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import VehicleList from '../components/VehicleList';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import TextField from '../components/ui/TextField';
 import api, { csrf } from '../lib/api';
 
 const fields = [
@@ -86,77 +90,48 @@ export default function Profile() {
     }
 
     if (loading) {
-        return <p className="text-sm text-slate-500">Loading…</p>;
+        return <p className="text-sm text-muted">Loading…</p>;
     }
 
     return (
-        <div className="max-w-sm">
-            <h1 className="text-lg font-semibold tracking-tight">Your profile</h1>
-
-            <p className="mt-2 text-sm text-slate-500">
-                Signed in as {email}. Please contact the warehouse team to change this address.
-            </p>
-
-            {message && (
-                <p
-                    role="alert"
-                    className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                >
-                    {message}
+        <div className="max-w-2xl space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-ink">Your profile</h1>
+                <p className="mt-2 text-[15px] text-muted">
+                    {email} · this is what the warehouse sees when you book.
                 </p>
-            )}
+            </div>
+
+            {message && <Alert>{message}</Alert>}
 
             {saved && (
-                <p role="status" className="mt-4 text-sm text-green-700">
+                <p role="status" className="text-sm font-semibold text-brand-700">
                     Your profile has been saved.
                 </p>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
-                {fields.map((field) => (
-                    <div key={field.name} className="flex flex-col gap-1">
-                        <label
-                            htmlFor={field.name}
-                            className={`text-sm font-medium text-slate-700 ${
-                                field.optional
-                                    ? ''
-                                    : "after:ml-0.5 after:text-red-600 after:content-['*']"
-                            }`}
-                        >
-                            {field.label}
-                        </label>
-                        <input
+            <Card title="Company and contact">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+                    {fields.map((field) => (
+                        <TextField
+                            key={field.name}
                             id={field.name}
                             name={field.name}
-                            type="text"
+                            label={field.label}
+                            hint={field.hint}
                             autoComplete={field.autoComplete}
                             required={! field.optional}
-                            aria-describedby={field.hint ? `${field.name}-hint` : undefined}
+                            error={errors[field.name]?.[0]}
                             value={form[field.name]}
-                            onChange={(event) =>
-                                setForm({ ...form, [field.name]: event.target.value })
-                            }
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
                         />
-                        {field.hint && (
-                            <p id={`${field.name}-hint`} className="text-xs text-slate-500">
-                                {field.hint}
-                            </p>
-                        )}
-                        {errors[field.name] && (
-                            <p className="text-sm text-red-600">{errors[field.name][0]}</p>
-                        )}
-                    </div>
-                ))}
+                    ))}
 
-                <button
-                    type="submit"
-                    disabled={submitting}
-                    className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                    {submitting ? 'Saving…' : 'Save'}
-                </button>
-            </form>
+                    <Button type="submit" loading={submitting} className="self-start">
+                        {submitting ? 'Saving…' : 'Save'}
+                    </Button>
+                </form>
+            </Card>
 
             <VehicleList />
         </div>

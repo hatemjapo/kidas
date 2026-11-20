@@ -3,9 +3,20 @@ import SlotPicker from './SlotPicker';
 import { useAuth } from '../auth/AuthContext';
 import api, { csrf } from '../lib/api';
 import { formatTime } from '../lib/datetime';
-import StatusBadge from './StatusBadge';
+import { plateMismatchStyle } from '../lib/statusStyles';
+import Alert from './ui/Alert';
+import Button from './ui/Button';
+import InfoBox from './ui/InfoBox';
+import NumberField from './ui/NumberField';
+import StatusChip from './ui/StatusChip';
+import TextField from './ui/TextField';
 
-export default function ArrivalPanel({ booking, onDone, onClose }) {
+const typeNames = {
+    inbound: 'Delivery',
+    outbound: 'Pickup',
+};
+
+export default function ArrivalPanel({ booking, onDone }) {
     const { role } = useAuth();
     const mayChangeTheBooking = role === 'admin' && booking.status === 'booked';
     const [plate, setPlate] = useState(booking.arrived_plate ?? '');
@@ -66,41 +77,33 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
         }
     }
 
+    const waiting = booking.status === 'booked' || booking.status === 'arrived';
+    const slotIsOver = new Date(booking.ends_at) <= new Date();
+
     return (
-        <section className="space-y-3 rounded-md border border-slate-200 p-4">
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <h2 className="text-base font-semibold">
-                        {formatTime(booking.starts_at)} – {formatTime(booking.ends_at)} · dock{' '}
-                        {booking.dock_number ?? ''} · {booking.company}
-                    </h2>
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted">
+                    {typeNames[booking.type] ?? booking.type} · {booking.pallets} pallets · {booking.order_number} ·
+                    expected <span className="font-mono text-ink">{booking.license_plate ?? '—'}</span>
+                </p>
 
-                    <p className="mt-1 text-sm text-slate-500">
-                        {booking.type} · {booking.pallets} pallets · {booking.order_number} · expected{' '}
-                        <span className="font-mono">{booking.license_plate}</span>
-                    </p>
-                </div>
+                <div className="flex items-center gap-2">
+                    <StatusChip status={booking.status} type={booking.type} />
 
-                <div className="flex items-center gap-3">
-                    <StatusBadge status={booking.status} />
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="text-sm font-medium text-slate-600 hover:underline"
-                    >
-                        Close
-                    </button>
+                    {booking.plate_mismatch && ! booking.plate_verified && (
+                        <span
+                            className={`inline-flex items-center rounded-nav px-2 py-1 text-xs font-semibold ${plateMismatchStyle.chip}`}
+                        >
+                            {plateMismatchStyle.label}
+                        </span>
+                    )}
                 </div>
             </div>
 
-            {message && (
-                <p role="alert" className="text-sm text-red-600">
-                    {message}
-                </p>
-            )}
+            {message && <Alert>{message}</Alert>}
 
-            {(booking.status === 'booked' || booking.status === 'arrived') && (
+            {waiting && (
                 <form
                     onSubmit={(event) => {
                         event.preventDefault();
@@ -114,36 +117,58 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                     className="flex flex-wrap items-end gap-3"
                     noValidate
                 >
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="arrived_plate" className="text-sm font-medium text-slate-700">
-                            License plate that arrived
-                        </label>
-                        <input
-                            id="arrived_plate"
-                            value={plate}
-                            onChange={(event) => setPlate(event.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {errors.license_plate && (
-                            <p className="text-sm text-red-600">{errors.license_plate[0]}</p>
-                        )}
-                    </div>
+                    <TextField
+                        id="arrived_plate"
+                        label="License plate that arrived"
+                        placeholder="HH-AB 1234"
+                        value={plate}
+                        error={errors.license_plate?.[0]}
+                        onChange={(event) => setPlate(event.target.value)}
+                        className="w-56"
+                    />
 
-                    <button
-                        type="submit"
-                        disabled={working}
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
+                    <Button type="submit" loading={working}>
                         {booking.status === 'booked' ? 'Register the arrival' : 'Correct the plate'}
-                    </button>
+                    </Button>
                 </form>
             )}
 
             {booking.arrived_at !== null && booking.arrived_at !== undefined && (
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted" data-numeric>
                     Arrived at {formatTime(booking.arrived_at)} with{' '}
-                    <span className="font-mono">{booking.arrived_plate}</span>.
+                    <span className="font-mono text-ink">{booking.arrived_plate}</span>.
                 </p>
+            )}
+
+            {booking.status === 'booked' && slotIsOver && ! marking && (
+                <Button variant="secondary" size={40} disabled={working} onClick={() => setMarking(true)}>
+                    Nobody turned up
+                </Button>
+            )}
+
+            {booking.status === 'booked' && marking && (
+                <div className="space-y-3 rounded-tile border border-line bg-canvas p-4">
+                    <p className="text-sm text-ink">
+                        Mark this booking as a no-show? The slot is then free for somebody else.
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size={40}
+                            loading={working}
+                            onClick={() => {
+                                setMarking(false);
+                                send(`/bookings/${booking.id}/no-show`, {});
+                            }}
+                        >
+                            Yes, nobody turned up
+                        </Button>
+
+                        <Button variant="secondary" size={40} onClick={() => setMarking(false)}>
+                            Not yet
+                        </Button>
+                    </div>
+                </div>
             )}
 
             {booking.plate_mismatch && ! booking.plate_verified && (
@@ -152,148 +177,152 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                         event.preventDefault();
                         send(`/bookings/${booking.id}/plate-verification`, { note: note === '' ? null : note });
                     }}
-                    className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3"
+                    className="space-y-3 rounded-tile border border-warn-700 bg-warn-50 p-4"
                     noValidate
                 >
-                    <p role="status" className="text-sm text-amber-900">
+                    <p role="status" className="text-sm text-warn-700">
                         The plate does not match the booking. Please check with the company before anything is
                         unloaded.
                     </p>
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="verify_note" className="text-sm font-medium text-amber-900">
-                            What did they say? (optional)
-                        </label>
-                        <input
-                            id="verify_note"
-                            value={note}
-                            onChange={(event) => setNote(event.target.value)}
-                            className="rounded-md border border-amber-300 px-3 py-2 text-sm"
-                        />
-                    </div>
+                    <TextField
+                        id="verify_note"
+                        label="What did they say? (optional)"
+                        value={note}
+                        onChange={(event) => setNote(event.target.value)}
+                    />
 
-                    <button
-                        type="submit"
-                        disabled={working}
-                        className="rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
+                    <Button type="submit" size={40} loading={working}>
                         Confirm the plate
-                    </button>
+                    </Button>
                 </form>
             )}
 
-            {mayChangeTheBooking && ! changing && ! cancelling && (
-                <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        disabled={working}
-                        onClick={() => setChanging(true)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                    >
-                        Change this booking
-                    </button>
+            {booking.plate_mismatch && booking.plate_verified && (
+                <p className="text-sm text-muted">The plate was different and has been confirmed with the company.</p>
+            )}
 
-                    <button
-                        type="button"
-                        disabled={working}
-                        onClick={() => setCancelling(true)}
-                        className="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
-                    >
+            {booking.status === 'arrived' && (
+                <Button
+                    disabled={working || (booking.plate_mismatch && ! booking.plate_verified)}
+                    onClick={() => send(`/bookings/${booking.id}/handling`, {})}
+                >
+                    Start the handling
+                </Button>
+            )}
+
+            {booking.started_at !== null && booking.started_at !== undefined && (
+                <p className="text-sm text-muted" data-numeric>
+                    Handling started at {formatTime(booking.started_at)}.
+                </p>
+            )}
+
+            {booking.status === 'in_progress' && ! releasing && (
+                <Button disabled={working} onClick={() => setReleasing(true)}>
+                    The dock is free
+                </Button>
+            )}
+
+            {booking.status === 'in_progress' && releasing && (
+                <div className="space-y-3 rounded-tile border border-brand-500 bg-brand-50 p-4">
+                    <p className="text-sm text-brand-800">
+                        Release dock {booking.dock_number} and finish this booking? This cannot be undone.
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size={40}
+                            loading={working}
+                            onClick={() => {
+                                setReleasing(false);
+                                send(`/bookings/${booking.id}/completion`, {});
+                            }}
+                        >
+                            Yes, the dock is free
+                        </Button>
+
+                        <Button variant="secondary" size={40} onClick={() => setReleasing(false)}>
+                            Not yet
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {booking.completed_at !== null && booking.completed_at !== undefined && (
+                <p className="text-sm text-muted" data-numeric>
+                    Dock released at {formatTime(booking.completed_at)}.
+                </p>
+            )}
+
+            {mayChangeTheBooking && ! changing && ! cancelling && (
+                <div className="flex items-center gap-3 border-t border-line pt-4">
+                    <Button variant="secondary" size={40} disabled={working} onClick={() => setChanging(true)}>
+                        Change this booking
+                    </Button>
+
+                    <Button variant="danger" size={40} disabled={working} onClick={() => setCancelling(true)}>
                         Cancel this booking
-                    </button>
+                    </Button>
                 </div>
             )}
 
             {mayChangeTheBooking && cancelling && (
-                <div className="space-y-3 rounded-md border border-red-300 bg-red-50 p-3">
-                    <p className="text-sm text-red-900">
+                <div className="space-y-3 rounded-tile border border-danger-700 bg-danger-50 p-4">
+                    <p className="text-sm text-danger-700">
                         Cancel this booking? The slot is then free for somebody else.
                     </p>
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="cancel_reason" className="text-sm font-medium text-red-900">
-                            Reason (optional)
-                        </label>
-                        <input
-                            id="cancel_reason"
-                            value={reason}
-                            onChange={(event) => setReason(event.target.value)}
-                            className="rounded-md border border-red-300 px-3 py-2 text-sm"
-                        />
-                    </div>
+                    <TextField
+                        id="cancel_reason"
+                        label="Reason (optional)"
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                    />
 
                     <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            disabled={working}
-                            onClick={cancelBooking}
-                            className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
+                        <Button variant="danger" size={40} loading={working} onClick={cancelBooking}>
                             Yes, cancel it
-                        </button>
+                        </Button>
 
-                        <button
-                            type="button"
-                            onClick={() => setCancelling(false)}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                        >
+                        <Button variant="secondary" size={40} onClick={() => setCancelling(false)}>
                             Keep it
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
 
             {mayChangeTheBooking && changing && (
-                <div className="space-y-3 rounded-md border border-slate-200 p-3">
-                    <h3 className="text-sm font-semibold">Change this booking</h3>
+                <div className="space-y-4 rounded-tile border border-line p-4">
+                    <h3 className="text-sm font-bold text-ink">Change this booking</h3>
 
                     <div className="flex flex-wrap items-end gap-3">
-                        <div className="flex flex-col gap-1">
-                            <label htmlFor="change_pallets" className="text-sm font-medium text-slate-700">
-                                Pallets
-                            </label>
-                            <input
-                                id="change_pallets"
-                                type="number"
-                                min="1"
-                                max="70"
-                                value={pallets}
-                                onChange={(event) => setPallets(Number(event.target.value))}
-                                className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
-                            />
-                        </div>
+                        <NumberField
+                            id="change_pallets"
+                            label="Pallets"
+                            min="1"
+                            max="70"
+                            value={pallets}
+                            onChange={(event) => setPallets(Number(event.target.value))}
+                        />
 
-                        <div className="flex flex-col gap-1">
-                            <label htmlFor="change_reason" className="text-sm font-medium text-slate-700">
-                                Reason (optional)
-                            </label>
-                            <input
-                                id="change_reason"
-                                value={reason}
-                                onChange={(event) => setReason(event.target.value)}
-                                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                            />
-                        </div>
+                        <TextField
+                            id="change_reason"
+                            label="Reason (optional)"
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            className="w-56"
+                        />
 
-                        <button
-                            type="button"
-                            disabled={working}
-                            onClick={() => changeBooking(null)}
-                            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
+                        <Button loading={working} onClick={() => changeBooking(null)}>
                             Keep the time
-                        </button>
+                        </Button>
 
-                        <button
-                            type="button"
-                            onClick={() => setChanging(false)}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                        >
+                        <Button variant="secondary" onClick={() => setChanging(false)}>
                             Leave it
-                        </button>
+                        </Button>
                     </div>
 
-                    <p className="text-sm text-slate-500">Or pick another start time:</p>
+                    <InfoBox>Or pick another start time below; the dock is assigned again when you do.</InfoBox>
 
                     <SlotPicker
                         type={booking.type}
@@ -302,117 +331,6 @@ export default function ArrivalPanel({ booking, onDone, onClose }) {
                     />
                 </div>
             )}
-
-            {booking.status === 'booked' && new Date(booking.ends_at) <= new Date() && ! marking && (
-                <button
-                    type="button"
-                    disabled={working}
-                    onClick={() => setMarking(true)}
-                    className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                >
-                    Nobody turned up
-                </button>
-            )}
-
-            {booking.status === 'booked' && marking && (
-                <div className="space-y-3 rounded-md border border-slate-300 bg-slate-50 p-3">
-                    <p className="text-sm text-slate-700">
-                        Mark this booking as a no-show? The slot is then free for somebody else.
-                    </p>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            disabled={working}
-                            onClick={() => {
-                                setMarking(false);
-                                send(`/bookings/${booking.id}/no-show`, {});
-                            }}
-                            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
-                            Yes, nobody turned up
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setMarking(false)}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                        >
-                            Not yet
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {booking.status === 'arrived' && (
-                <button
-                    type="button"
-                    disabled={working || (booking.plate_mismatch && ! booking.plate_verified)}
-                    onClick={() => send(`/bookings/${booking.id}/handling`, {})}
-                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                    Start the handling
-                </button>
-            )}
-
-            {booking.started_at !== null && booking.started_at !== undefined && (
-                <p className="text-sm text-slate-600">
-                    Handling started at {formatTime(booking.started_at)}.
-                </p>
-            )}
-
-            {booking.status === 'in_progress' && ! releasing && (
-                <button
-                    type="button"
-                    disabled={working}
-                    onClick={() => setReleasing(true)}
-                    className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                    The dock is free
-                </button>
-            )}
-
-            {booking.status === 'in_progress' && releasing && (
-                <div className="space-y-3 rounded-md border border-emerald-300 bg-emerald-50 p-3">
-                    <p className="text-sm text-emerald-900">
-                        Release dock {booking.dock_number} and finish this booking? This cannot be undone.
-                    </p>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            type="button"
-                            disabled={working}
-                            onClick={() => {
-                                setReleasing(false);
-                                send(`/bookings/${booking.id}/completion`, {});
-                            }}
-                            className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
-                            Yes, the dock is free
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setReleasing(false)}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                        >
-                            Not yet
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {booking.completed_at !== null && booking.completed_at !== undefined && (
-                <p className="text-sm text-slate-600">
-                    Dock released at {formatTime(booking.completed_at)}.
-                </p>
-            )}
-
-            {booking.plate_mismatch && booking.plate_verified && (
-                <p className="text-sm text-slate-600">
-                    The plate was different and has been confirmed with the company.
-                </p>
-            )}
-        </section>
+        </div>
     );
 }

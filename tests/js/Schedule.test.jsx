@@ -316,3 +316,13 @@ test('reloads the day after an arrival was registered', async () => {
         expect(api.get.mock.calls.filter(([url]) => url.startsWith('/schedule')).length).toBe(before + 1)
     );
 });
+
+test('offers exactly one way to close the dialog', async () => {
+    render(<Schedule />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Nordfracht GmbH/ }));
+
+    await screen.findByRole('dialog');
+
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+});

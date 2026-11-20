@@ -283,7 +283,6 @@ export default function Schedule() {
                 >
                     <ArrivalPanel
                         booking={selected}
-                        onClose={() => setSelected(null)}
                         onDone={(changed) => {
                             setSelected({ ...selected, ...changed });
                             setReload((count) => count + 1);

@@ -39,7 +39,7 @@ test('lists the saved plates', async () => {
 test('says so when nothing is saved yet', async () => {
     await renderWith([]);
 
-    expect(screen.getByText('No vehicles saved yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No plates saved yet/)).toBeInTheDocument();
 });
 
 test('adds a plate and shows it afterwards', async () => {
