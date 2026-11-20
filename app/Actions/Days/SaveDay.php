@@ -5,6 +5,7 @@ namespace App\Actions\Days;
 use App\Models\CalendarDay;
 use App\Models\DockDayUsage;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class SaveDay
         }
 
         return DB::transaction(function () use ($date, $state): CalendarDay {
-            $day = CalendarDay::query()->where('date', $date->toDateString())->first() ?? new CalendarDay;
+            $day = CalendarDay::getDayForDate(CarbonImmutable::parse($date->toDateString())) ?? new CalendarDay;
 
             $day->date = Carbon::parse($date->toDateString());
             $day->is_closed = (bool) ($state['is_closed'] ?? false);

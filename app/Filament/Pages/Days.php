@@ -118,10 +118,7 @@ class Days extends Page implements HasForms
      */
     private function dockFields(): array
     {
-        return Dock::query()
-            ->where('is_active', true)
-            ->orderBy('number')
-            ->get()
+        return Dock::getActiveDocks()
             ->map(fn (Dock $dock): Fieldset => Fieldset::make($dock->name)
                 ->columns(2)
                 ->components([
@@ -201,12 +198,7 @@ class Days extends Page implements HasForms
         $first = CarbonImmutable::parse($this->month.'-01');
         $today = CarbonImmutable::today();
 
-        $released = CalendarDay::query()
-            ->whereBetween('date', [$first->toDateString(), $first->endOfMonth()->toDateString()])
-            ->where('is_released', true)
-            ->pluck('date')
-            ->map(fn ($date): string => $date->toDateString())
-            ->all();
+        $released = CalendarDay::getReleasedDatesInMonth($first);
 
         $days = [];
 

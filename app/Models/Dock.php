@@ -20,6 +20,14 @@ class Dock extends Model
     /** @use HasFactory<DockFactory> */
     use HasFactory;
 
+    /**
+     * @return Collection<int, self>
+     */
+    public static function getActiveDocks(): Collection
+    {
+        return self::query()->where('is_active', true)->orderBy('number')->get();
+    }
+
     public static function getDockForUsage(CalendarDay $day, Shift $shift, DockUsage $usage): ?self
     {
         return self::query()
