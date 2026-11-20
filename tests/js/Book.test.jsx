@@ -22,7 +22,10 @@ const days = [{ date: '2027-06-02', slots: [slot] }];
 
 const vehicles = [{ id: 3, license_plate: 'HHAB1234' }];
 
-const suppliers = [{ id: 4, company_name: 'Nordfracht GmbH' }];
+const suppliers = [
+    { id: 4, company_name: 'Nordfracht GmbH' },
+    { id: 5, company_name: 'Aalbert Logistik' },
+];
 
 beforeEach(() => {
     api.get.mockReset();
@@ -57,16 +60,21 @@ function renderBook() {
     );
 }
 
-async function walkToDetails() {
+async function pickSlot() {
     renderBook();
 
-    fireEvent.change(screen.getByLabelText('Pallets'), { target: { value: '24' } });
     fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
-
     fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+}
+
+test('looks for no slot before the load is named', async () => {
+    renderBook();
 
     await screen.findByLabelText('Order number');
-}
+
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining('/slots'));
+    expect(screen.getByText(/then show the free slots/)).toBeInTheDocument();
+});
 
 test('asks for the slots of the chosen load', async () => {
     renderBook();
@@ -80,20 +88,53 @@ test('asks for the slots of the chosen load', async () => {
 test('asks for pickups when that is what is wanted', async () => {
     renderBook();
 
-    fireEvent.change(screen.getByLabelText('I want to'), { target: { value: 'outbound' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pickup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/slots?type=outbound&pallets=10'));
 });
 
-test('shows the chosen slot on the detail step', async () => {
-    await walkToDetails();
+test('looks again once the load changed', async () => {
+    renderBook();
 
-    expect(screen.getByText(/Wed, 02\/06\/2027, 06:00 – 06:45/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+
+    await screen.findByRole('button', { name: '06:00' });
+
+    fireEvent.change(screen.getByLabelText('Pallets'), { target: { value: '40' } });
+
+    expect(screen.queryByRole('button', { name: '06:00' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeInTheDocument();
+});
+
+test('says how long the load blocks a dock', async () => {
+    renderBook();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+
+    expect(await screen.findByText(/Blocks a dock for/)).toHaveTextContent('45 minutes');
+});
+
+test('waits for a start time before it lets anything be booked', async () => {
+    renderBook();
+
+    await screen.findByLabelText('Order number');
+
+    expect(screen.getByRole('button', { name: 'Book this slot' })).toBeDisabled();
+    expect(screen.getByText(/Pick a start time to see your booking/)).toBeInTheDocument();
+});
+
+test('summarises the slot that was picked', async () => {
+    await pickSlot();
+
+    expect(screen.getByText('Wednesday, 2 June 2027')).toBeInTheDocument();
+    expect(screen.getByText('06:00 – 06:45')).toBeInTheDocument();
+    expect(screen.getByText('Delivery · 10 pallets')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Book this slot' })).toBeEnabled();
 });
 
 test('offers the saved vehicles', async () => {
-    await walkToDetails();
+    await pickSlot();
 
     expect(await screen.findByRole('option', { name: 'HHAB1234' })).toBeInTheDocument();
 });
@@ -103,7 +144,7 @@ test('books the slot with a new plate', async () => {
         data: { data: { ...slot, dock_number: 3, pallets: 24, license_plate: 'HHZZ999' } },
     });
 
-    await walkToDetails();
+    await pickSlot();
 
     fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
     fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
@@ -113,7 +154,7 @@ test('books the slot with a new plate', async () => {
     await waitFor(() =>
         expect(api.post).toHaveBeenCalledWith('/bookings', {
             type: 'inbound',
-            pallets: 24,
+            pallets: 10,
             starts_at: '2027-06-02T04:00:00Z',
             order_number: 'PO-4711',
             driver_phone: '+49 170 1',
@@ -128,7 +169,7 @@ test('books the slot with a new plate', async () => {
 test('books the slot with a saved vehicle', async () => {
     api.post.mockResolvedValue({ data: { data: { ...slot, dock_number: 1, pallets: 24, license_plate: 'HHAB1234' } } });
 
-    await walkToDetails();
+    await pickSlot();
 
     fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
     fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
@@ -141,6 +182,8 @@ test('books the slot with a saved vehicle', async () => {
             expect.objectContaining({ vehicle_id: 3, license_plate: null })
         )
     );
+
+    expect(screen.queryByLabelText('License plate')).not.toBeInTheDocument();
 });
 
 test('names the dock once the slot is booked', async () => {
@@ -148,14 +191,14 @@ test('names the dock once the slot is booked', async () => {
         data: { data: { ...slot, dock_number: 3, pallets: 24, license_plate: 'HHAB1234' } },
     });
 
-    await walkToDetails();
+    await pickSlot();
 
     fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
     fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent('dock 3');
-    expect(screen.getByText('Slot booked')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dock 3', level: 1 })).toBeInTheDocument();
 });
 
 test('shows the field errors the server sends back', async () => {
@@ -163,34 +206,32 @@ test('shows the field errors the server sends back', async () => {
         response: { status: 422, data: { errors: { order_number: ['The order number field is required.'] } } },
     });
 
-    await walkToDetails();
+    await pickSlot();
 
     fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
 
     expect(await screen.findByText('The order number field is required.')).toBeInTheDocument();
 });
 
-test('sends the supplier back to the slots when the slot is gone', async () => {
+test('drops the slot when it has just been taken', async () => {
     api.post.mockRejectedValue({
         response: { status: 409, data: { message: 'This slot has just been taken. Please pick another one.' } },
     });
 
-    await walkToDetails();
+    await pickSlot();
 
     fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('has just been taken');
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '06:00' })).toBeInTheDocument());
-    expect(screen.queryByLabelText('Order number')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Pick a start time to see your booking/)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Book this slot' })).toBeDisabled();
 });
 
-test('goes back to the slots on request', async () => {
-    await walkToDetails();
+test('says what the deadline for changes is', async () => {
+    renderBook();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pick another slot' }));
-
-    expect(await screen.findByRole('button', { name: '06:00' })).toBeInTheDocument();
+    expect(await screen.findByText(/up to three hours before the slot/)).toBeInTheDocument();
 });
 
 function renderAsAdmin() {
@@ -211,11 +252,28 @@ test('leaves the supplier out of a supplier booking', async () => {
     expect(screen.queryByLabelText('Supplier')).not.toBeInTheDocument();
 });
 
-test('asks the admin whom the slot is for', async () => {
+test('asks the admin whom the slot is for before anything else', async () => {
     renderAsAdmin();
 
     expect(await screen.findByRole('option', { name: 'Nordfracht GmbH' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show free slots' })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Supplier'), { target: { value: '4' } });
+
+    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeEnabled();
+});
+
+test('forgets the slot when the admin picks another supplier', async () => {
+    renderAsAdmin();
+
+    fireEvent.change(await screen.findByLabelText('Supplier'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
+    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+
+    fireEvent.change(screen.getByLabelText('Supplier'), { target: { value: '5' } });
+
+    expect(screen.getByText(/Pick a start time to see your booking/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeInTheDocument();
 });
 
 test('loads the plates of the chosen supplier', async () => {
@@ -226,7 +284,6 @@ test('loads the plates of the chosen supplier', async () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/suppliers/4/vehicles'));
 
     expect(api.get).not.toHaveBeenCalledWith('/vehicles');
-    expect(screen.getByRole('button', { name: 'Show free slots' })).toBeEnabled();
 });
 
 test('books for the chosen supplier', async () => {
@@ -259,25 +316,6 @@ test('books for the chosen supplier', async () => {
     );
 });
 
-test('shows that a supplier is missing', async () => {
-    api.post.mockRejectedValue({
-        response: { status: 422, data: { errors: { supplier_id: ['This supplier is not approved.'] } } },
-    });
-
-    renderAsAdmin();
-
-    fireEvent.change(await screen.findByLabelText('Supplier'), { target: { value: '4' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
-    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
-
-    fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
-    fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 170 1' } });
-    fireEvent.change(await screen.findByLabelText('License plate'), { target: { value: 'HHAB1234' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Book this slot' }));
-
-    expect(await screen.findByText('This supplier is not approved.')).toBeInTheDocument();
-});
-
 test('prefills the driver phone a supplier keeps in their profile', async () => {
     api.get.mockImplementation((url) => {
         if (url === '/profile') {
@@ -292,9 +330,6 @@ test('prefills the driver phone a supplier keeps in their profile', async () => 
     });
 
     renderBook();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
-    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
 
     expect(await screen.findByLabelText('Driver phone')).toHaveValue('+49 170 1234567');
 });
@@ -313,13 +348,10 @@ test('lets another driver be typed over the default', async () => {
     });
 
     api.post.mockResolvedValue({
-        data: { data: { id: 9, dock_number: 1, starts_at: slot.starts_at, ends_at: slot.ends_at, pallets: 10, license_plate: 'HHAB1234' } },
+        data: { data: { ...slot, dock_number: 1, pallets: 10, license_plate: 'HHAB1234' } },
     });
 
-    renderBook();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show free slots' }));
-    fireEvent.click(await screen.findByRole('button', { name: '06:00' }));
+    await pickSlot();
 
     fireEvent.change(screen.getByLabelText('Order number'), { target: { value: 'PO-4711' } });
     fireEvent.change(screen.getByLabelText('Driver phone'), { target: { value: '+49 171 9999999' } });

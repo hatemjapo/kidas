@@ -36,13 +36,38 @@ test('asks for the slots of this load', async () => {
     expect(await screen.findByText('24 pallets block a dock for 45 minutes.')).toBeInTheDocument();
 });
 
-test('shows the days with their start times', async () => {
+test('offers a tile per day with the number of free times', async () => {
     render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
 
-    expect(await screen.findByText('Wed, 02/06/2027')).toBeInTheDocument();
-    expect(screen.getByText('Thu, 03/06/2027')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: '06:00' })).toHaveLength(2);
+    expect(await screen.findByRole('button', { name: 'Wednesday 02/06, 2 free times' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Thursday 03/06, 1 free time' })).toBeInTheDocument();
+});
+
+test('shows the start times of the chosen day, grouped by shift', async () => {
+    render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: '06:00' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '06:15' })).toBeInTheDocument();
+    expect(screen.getByText(/Early shift/)).toBeInTheDocument();
+    expect(screen.getByText(/No free start time left in this shift/)).toBeInTheDocument();
+});
+
+test('shows another day once its tile is chosen', async () => {
+    render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Thursday 03\/06/ }));
+
+    expect(screen.getAllByRole('button', { name: '06:00' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: '06:15' })).not.toBeInTheDocument();
+});
+
+test('marks the start time that was picked', async () => {
+    render(
+        <SlotPicker type="inbound" pallets={24} selected={days[0].slots[1]} onPick={vi.fn()} />
+    );
+
+    expect(await screen.findByRole('button', { name: '06:15' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '06:00' })).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('hands the chosen slot upwards', async () => {
@@ -78,7 +103,7 @@ test('pages to the earlier days', async () => {
 test('falls back to the first days when a page comes back empty', async () => {
     render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
 
-    await screen.findByText('Wed, 02/06/2027');
+    await screen.findByRole('button', { name: /Wednesday 02\/06/ });
 
     api.get.mockResolvedValueOnce({ data: { data: [], meta: { duration_minutes: 45 } } });
 
@@ -86,7 +111,7 @@ test('falls back to the first days when a page comes back empty', async () => {
 
     await waitFor(() => expect(api.get).toHaveBeenCalledTimes(3));
 
-    expect(screen.getByText('Wed, 02/06/2027')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Wednesday 02\/06/ })).toBeInTheDocument();
 });
 
 test('says so when nothing is free', async () => {
@@ -94,7 +119,7 @@ test('says so when nothing is free', async () => {
 
     render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
 
-    expect(await screen.findByText('No free slots for this load at the moment.')).toBeInTheDocument();
+    expect(await screen.findByText(/No free start times for this load/)).toBeInTheDocument();
 });
 
 test('says so when the slots cannot be loaded', async () => {
@@ -103,4 +128,12 @@ test('says so when the slots cannot be loaded', async () => {
     render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
+});
+
+test('tells the page how long the load blocks a dock', async () => {
+    const onDuration = vi.fn();
+
+    render(<SlotPicker type="inbound" pallets={24} onPick={vi.fn()} onDuration={onDuration} />);
+
+    await waitFor(() => expect(onDuration).toHaveBeenCalledWith(45));
 });
