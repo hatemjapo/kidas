@@ -148,6 +148,41 @@ numbers, no comments in code.
 
 ## Where the AI got it wrong
 
+- Creating plan: The AI understood many points as very important for the application, which wasnt necessary at all. It
+  kinds overreacted with defining the plan. The plan was too long and had way too much information which is not needed.
+
+- After creating the first Story, the AI just committed all the changes without asking me. After setting the rule as skill
+  it always stopped and waited for my confirmation
+
+- The plan created with AI didnt had any frontend tasks. While developing, it realizes that its missing which could easily
+  be created
+
+- The CI failed one time. The AI fixed it automatically and pushed the changes, again without me permission
+
+- While creating a PR, the AI wrote basically all kind of information. It also included informations discussed while
+  creating the task and also why the decision is made for this, what wasnt developed and so on. Way too much information
+  and not readable by a human
+
+- While developing FE, AI wanted to create a `vitetests.config.js` instead of having it in `vite.config.js` after me
+  asking and discussing why, it realizes thats its not necessary
+
+- `make:filament-user` didnt work, that was because the AI suggested to make the field `role` not having a default value
+  and not fillable (good decision, security issue). But the AI was trying to fix `make:filament-user` and was too focused on
+  it that it has to be fixed and created a way to complicated plan. In my opinion, it was enough to set a default value, and
+  that actually solved the problem
+
+- The AI wanted to create 2 files for the Supplier status `ApproveSupplier.php` and `RejectSupplier.php`. After me asking
+  and discussing why, it realized, that both have the same logic and code. It would have created a lot of duplicated code
+  and decided to put it in one file
+
+- some easy tasks are like a rule for the AI and overreacts while developing it. For example, i wanted a select box with 15min
+  options and max 180min limit. The AI read the word max as a rule and wanted to create a rule, psql index and also create tests
+  for that.
+- clean code is not known to AI. It wanted to have queries inside the controller. After me pointing that, it moved it to model
+- AI doesnt know, that is readable for a human. It created a method, with a way to long return statement. It is not wrong
+  but way to hard for a human to read and review
+
+
 ## Architecture decisions
 
 **API-first with a panel beside it.** Suppliers and the warehouse work through the API and the React app; the admin
